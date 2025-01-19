@@ -9,7 +9,13 @@ import {
   useIsRecording,
 } from '@livekit/components-react';
 import { useKrispNoiseFilter } from '@livekit/components-react/krisp';
-import styles from '../styles/SettingsMenu.module.css';
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 
 /**
  * @alpha
@@ -19,24 +25,12 @@ export interface SettingsMenuProps extends React.HTMLAttributes<HTMLDivElement> 
 /**
  * @alpha
  */
-export function SettingsMenu(props: SettingsMenuProps) {
+export function SettingsMenu({ className, ...props }: SettingsMenuProps) {
   const layoutContext = useMaybeLayoutContext();
   const room = useRoomContext();
   const recordingEndpoint = process.env.NEXT_PUBLIC_LK_RECORD_ENDPOINT;
 
-  const settings = React.useMemo(() => {
-    return {
-      media: { camera: true, microphone: true, label: 'Media Devices', speaker: true },
-      effects: { label: 'Effects' },
-      recording: recordingEndpoint ? { label: 'Recording' } : undefined,
-    };
-  }, []);
-
-  const tabs = React.useMemo(
-    () => Object.keys(settings).filter((t) => t !== undefined) as Array<keyof typeof settings>,
-    [settings],
-  );
-  const [activeTab, setActiveTab] = React.useState(tabs[0]);
+  const [activeTab, setActiveTab] = React.useState("media");
 
   const { isNoiseFilterEnabled, setNoiseFilterEnabled, isNoiseFilterPending } =
     useKrispNoiseFilter();
@@ -83,100 +77,116 @@ export function SettingsMenu(props: SettingsMenuProps) {
   };
 
   return (
-    <div className="settings-menu" style={{ width: '100%' }} {...props}>
-      <div className={styles.tabs}>
-        {tabs.map(
-          (tab) =>
-            settings[tab] && (
-              <button
-                className={`${styles.tab} lk-button`}
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                aria-pressed={tab === activeTab}
-              >
-                {
-                  // @ts-ignore
-                  settings[tab].label
-                }
-              </button>
-            ),
-        )}
-      </div>
-      <div className="tab-content">
-        {activeTab === 'media' && (
-          <>
-            {settings.media && settings.media.camera && (
-              <>
-                <h3>Camera</h3>
-                <section className="lk-button-group">
-                  <TrackToggle source={Track.Source.Camera}>Camera</TrackToggle>
-                  <div className="lk-button-group-menu">
-                    <MediaDeviceMenu kind="videoinput" />
-                  </div>
-                </section>
-              </>
-            )}
-            {settings.media && settings.media.microphone && (
-              <>
-                <h3>Microphone</h3>
-                <section className="lk-button-group">
-                  <TrackToggle source={Track.Source.Microphone}>Microphone</TrackToggle>
-                  <div className="lk-button-group-menu">
-                    <MediaDeviceMenu kind="audioinput" />
-                  </div>
-                </section>
-              </>
-            )}
-            {settings.media && settings.media.speaker && (
-              <>
-                <h3>Speaker & Headphones</h3>
-                <section className="lk-button-group">
-                  <span className="lk-button">Audio Output</span>
-                  <div className="lk-button-group-menu">
-                    <MediaDeviceMenu kind="audiooutput"></MediaDeviceMenu>
-                  </div>
-                </section>
-              </>
-            )}
-          </>
-        )}
-        {activeTab === 'effects' && (
-          <>
-            <h3>Audio</h3>
-            <section>
-              <label htmlFor="noise-filter"> Enhanced Noise Cancellation</label>
-              <input
-                type="checkbox"
-                id="noise-filter"
-                onChange={(ev) => setNoiseFilterEnabled(ev.target.checked)}
-                checked={isNoiseFilterEnabled}
-                disabled={isNoiseFilterPending}
-              ></input>
-            </section>
-          </>
-        )}
-        {activeTab === 'recording' && (
-          <>
-            <h3>Record Meeting</h3>
-            <section>
-              <p>
-                {isRecording
-                  ? 'Meeting is currently being recorded'
-                  : 'No active recordings for this meeting'}
-              </p>
-              <button disabled={processingRecRequest} onClick={() => toggleRoomRecording()}>
-                {isRecording ? 'Stop' : 'Start'} Recording
-              </button>
-            </section>
-          </>
-        )}
-      </div>
-      <button
-        className={`lk-button ${styles.settingsCloseButton}`}
-        onClick={() => layoutContext?.widget.dispatch?.({ msg: 'toggle_settings' })}
-      >
-        Close
-      </button>
-    </div>
+    <Dialog defaultOpen={true} onOpenChange={() => layoutContext?.widget.dispatch?.({ msg: 'toggle_settings' })}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Settings</DialogTitle>
+        </DialogHeader>
+        <Tabs defaultValue="media" value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="media">Media</TabsTrigger>
+            <TabsTrigger value="effects">Effects</TabsTrigger>
+            {recordingEndpoint && <TabsTrigger value="recording">Recording</TabsTrigger>}
+          </TabsList>
+          <TabsContent value="media" className="space-y-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Camera</Label>
+                <div className="flex items-center gap-2">
+                  <TrackToggle source={Track.Source.Camera} className={cn(
+                    "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                    "disabled:pointer-events-none disabled:opacity-50",
+                    "bg-primary text-primary-foreground shadow hover:bg-primary/90",
+                    "h-9 px-4 py-2"
+                  )}>
+                    Camera
+                  </TrackToggle>
+                  <Select>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select camera" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <MediaDeviceMenu kind="videoinput" />
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Microphone</Label>
+                <div className="flex items-center gap-2">
+                  <TrackToggle source={Track.Source.Microphone} className={cn(
+                    "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                    "disabled:pointer-events-none disabled:opacity-50",
+                    "bg-primary text-primary-foreground shadow hover:bg-primary/90",
+                    "h-9 px-4 py-2"
+                  )}>
+                    Microphone
+                  </TrackToggle>
+                  <Select>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select microphone" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <MediaDeviceMenu kind="audioinput" />
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Speaker & Headphones</Label>
+                <Select>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select audio output" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <MediaDeviceMenu kind="audiooutput" />
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="effects" className="space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between space-x-2">
+                <Label htmlFor="noise-filter">Enhanced Noise Cancellation</Label>
+                <Switch
+                  id="noise-filter"
+                  checked={isNoiseFilterEnabled}
+                  onCheckedChange={setNoiseFilterEnabled}
+                  disabled={isNoiseFilterPending}
+                />
+              </div>
+            </div>
+          </TabsContent>
+
+          {recordingEndpoint && (
+            <TabsContent value="recording" className="space-y-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Record Meeting</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {isRecording
+                      ? 'Meeting is currently being recorded'
+                      : 'No active recordings for this meeting'}
+                  </p>
+                  <Button 
+                    disabled={processingRecRequest}
+                    onClick={toggleRoomRecording}
+                    variant={isRecording ? "destructive" : "default"}
+                  >
+                    {isRecording ? 'Stop' : 'Start'} Recording
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+          )}
+        </Tabs>
+      </DialogContent>
+    </Dialog>
   );
 }

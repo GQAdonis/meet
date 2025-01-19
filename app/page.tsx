@@ -3,9 +3,24 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { Suspense, useState } from 'react';
 import { encodePassphrase, generateRoomId, randomString } from '@/lib/client-utils';
-import styles from '../styles/Home.module.css';
+import styles from '@/styles/Home.module.css';
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import Link from 'next/link';
 
-function Tabs(props: React.PropsWithChildren<{}>) {
+interface TabChildProps {
+  label: string;
+}
+
+interface TabsProps {
+  children: React.ReactElement<TabChildProps>[];
+}
+
+function Tabs({ children }: TabsProps): React.ReactElement {
   const searchParams = useSearchParams();
   const tabIndex = searchParams?.get('tab') === 'custom' ? 1 : 0;
 
@@ -15,29 +30,25 @@ function Tabs(props: React.PropsWithChildren<{}>) {
     router.push(`/?tab=${tab}`);
   }
 
-  let tabs = React.Children.map(props.children, (child, index) => {
+  const tabs = React.Children.map(children, (child, index) => {
+    if (!React.isValidElement<TabChildProps>(child)) return null;
     return (
-      <button
-        className="lk-button"
-        onClick={() => {
-          if (onTabSelected) {
-            onTabSelected(index);
-          }
-        }}
-        aria-pressed={tabIndex === index}
+      <Button
+        variant={tabIndex === index ? "default" : "secondary"}
+        onClick={() => onTabSelected(index)}
+        className="w-full"
+        size="lg"
       >
-        {/* @ts-ignore */}
-        {child?.props.label}
-      </button>
+        {child.props.label}
+      </Button>
     );
   });
 
   return (
-    <div className={styles.tabContainer}>
+    <Card className={styles.tabContainer}>
       <div className={styles.tabSelect}>{tabs}</div>
-      {/* @ts-ignore */}
-      {props.children[tabIndex]}
-    </div>
+      {React.Children.toArray(children)[tabIndex]}
+    </Card>
   );
 }
 
@@ -45,6 +56,7 @@ function DemoMeetingTab(props: { label: string }) {
   const router = useRouter();
   const [e2ee, setE2ee] = useState(false);
   const [sharedPassphrase, setSharedPassphrase] = useState(randomString(64));
+  
   const startMeeting = () => {
     if (e2ee) {
       router.push(`/rooms/${generateRoomId()}#${encodePassphrase(sharedPassphrase)}`);
@@ -52,26 +64,37 @@ function DemoMeetingTab(props: { label: string }) {
       router.push(`/rooms/${generateRoomId()}`);
     }
   };
+  
   return (
     <div className={styles.tabContent}>
-      <p style={{ margin: 0 }}>Try LiveKit Meet for free with our live demo project.</p>
-      <button style={{ marginTop: '1rem' }} className="lk-button" onClick={startMeeting}>
+      <div className="space-y-2">
+        <h3 className="text-lg font-semibold text-foreground">
+          Try Olympus Meet for free using your BlueSky account
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          Start a meeting and invite your friends to join. Use the custom button to change servers.
+        </p>
+      </div>
+      <Button 
+        size="lg"
+        className="w-full"
+        onClick={startMeeting}
+      >
         Start Meeting
-      </button>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <div style={{ display: 'flex', flexDirection: 'row', gap: '1rem' }}>
-          <input
+      </Button>
+      <div className="space-y-4">
+        <div className="flex items-center space-x-2">
+          <Checkbox
             id="use-e2ee"
-            type="checkbox"
             checked={e2ee}
-            onChange={(ev) => setE2ee(ev.target.checked)}
-          ></input>
-          <label htmlFor="use-e2ee">Enable end-to-end encryption</label>
+            onCheckedChange={(checked) => setE2ee(checked as boolean)}
+          />
+          <Label htmlFor="use-e2ee">Enable end-to-end encryption</Label>
         </div>
         {e2ee && (
-          <div style={{ display: 'flex', flexDirection: 'row', gap: '1rem' }}>
-            <label htmlFor="passphrase">Passphrase</label>
-            <input
+          <div className="space-y-2">
+            <Label htmlFor="passphrase">Passphrase</Label>
+            <Input
               id="passphrase"
               type="password"
               value={sharedPassphrase}
@@ -86,76 +109,92 @@ function DemoMeetingTab(props: { label: string }) {
 
 function CustomConnectionTab(props: { label: string }) {
   const router = useRouter();
-
   const [e2ee, setE2ee] = useState(false);
   const [sharedPassphrase, setSharedPassphrase] = useState(randomString(64));
+  const [pdsServer, setPdsServer] = useState('https://bsky.social');
 
   const onSubmit: React.FormEventHandler<HTMLFormElement> = (event) => {
     event.preventDefault();
     const formData = new FormData(event.target as HTMLFormElement);
     const serverUrl = formData.get('serverUrl');
     const token = formData.get('token');
+    const pdsUrl = formData.get('pdsUrl');
     if (e2ee) {
       router.push(
-        `/custom/?liveKitUrl=${serverUrl}&token=${token}#${encodePassphrase(sharedPassphrase)}`,
+        `/custom/?liveKitUrl=${serverUrl}&token=${token}&pdsUrl=${pdsUrl}#${encodePassphrase(sharedPassphrase)}`,
       );
     } else {
-      router.push(`/custom/?liveKitUrl=${serverUrl}&token=${token}`);
+      router.push(`/custom/?liveKitUrl=${serverUrl}&token=${token}&pdsUrl=${pdsUrl}`);
     }
   };
+  
   return (
     <form className={styles.tabContent} onSubmit={onSubmit}>
-      <p style={{ marginTop: 0 }}>
-        Connect LiveKit Meet with a custom server using LiveKit Cloud or LiveKit Server.
+      <p className="text-lg text-muted-foreground">
+        Connect Olympus Meet to your preferred LiveKit server while authenticating through your chosen AT Protocol PDS server for a fully customized experience.
       </p>
-      <input
-        id="serverUrl"
-        name="serverUrl"
-        type="url"
-        placeholder="LiveKit Server URL: wss://*.livekit.cloud"
-        required
-      />
-      <textarea
-        id="token"
-        name="token"
-        placeholder="Token"
-        required
-        rows={5}
-        style={{ padding: '1px 2px', fontSize: 'inherit', lineHeight: 'inherit' }}
-      />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <div style={{ display: 'flex', flexDirection: 'row', gap: '1rem' }}>
-          <input
-            id="use-e2ee"
-            type="checkbox"
-            checked={e2ee}
-            onChange={(ev) => setE2ee(ev.target.checked)}
-          ></input>
-          <label htmlFor="use-e2ee">Enable end-to-end encryption</label>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="pdsUrl">PDS Server URL</Label>
+          <Input
+            id="pdsUrl"
+            name="pdsUrl"
+            type="url"
+            value={pdsServer}
+            onChange={(e) => setPdsServer(e.target.value)}
+            placeholder="BlueSky PDS Server URL: https://bsky.social"
+            required
+          />
         </div>
-        {e2ee && (
-          <div style={{ display: 'flex', flexDirection: 'row', gap: '1rem' }}>
-            <label htmlFor="passphrase">Passphrase</label>
-            <input
-              id="passphrase"
-              type="password"
-              value={sharedPassphrase}
-              onChange={(ev) => setSharedPassphrase(ev.target.value)}
+        <div className="space-y-2">
+          <Label htmlFor="serverUrl">LiveKit Server URL</Label>
+          <Input
+            id="serverUrl"
+            name="serverUrl"
+            type="url"
+            placeholder="LiveKit Server URL: wss://*.livekit.cloud"
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="token">Token</Label>
+          <Textarea
+            id="token"
+            name="token"
+            placeholder="Token"
+            required
+            rows={5}
+          />
+        </div>
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="use-e2ee"
+              checked={e2ee}
+              onCheckedChange={(checked) => setE2ee(checked as boolean)}
             />
+            <Label htmlFor="use-e2ee">Enable end-to-end encryption</Label>
           </div>
-        )}
+          {e2ee && (
+            <div className="space-y-2">
+              <Label htmlFor="passphrase">Passphrase</Label>
+              <Input
+                id="passphrase"
+                type="password"
+                value={sharedPassphrase}
+                onChange={(ev) => setSharedPassphrase(ev.target.value)}
+              />
+            </div>
+          )}
+        </div>
       </div>
-
-      <hr
-        style={{ width: '100%', borderColor: 'rgba(255, 255, 255, 0.15)', marginBlock: '1rem' }}
-      />
-      <button
-        style={{ paddingInline: '1.25rem', width: '100%' }}
-        className="lk-button"
+      <Button
+        size="lg"
+        className="w-full"
         type="submit"
       >
         Connect
-      </button>
+      </Button>
     </form>
   );
 }
@@ -163,38 +202,52 @@ function CustomConnectionTab(props: { label: string }) {
 export default function Page() {
   return (
     <>
-      <main className={styles.main} data-lk-theme="default">
-        <div className="header">
-          <img src="/images/livekit-meet-home.svg" alt="LiveKit Meet" width="360" height="45" />
-          <h2>
-            Open source video conferencing app built on{' '}
-            <a href="https://github.com/livekit/components-js?ref=meet" rel="noopener">
-              LiveKit&nbsp;Components
-            </a>
-            ,{' '}
-            <a href="https://livekit.io/cloud?ref=meet" rel="noopener">
-              LiveKit&nbsp;Cloud
-            </a>{' '}
-            and Next.js.
-          </h2>
+      <nav className={styles.navbar}>
+        <div className={styles.navContent}>
+        <Link href="/" className="flex items-center gap-2 font-semibold">
+          <span className="text-2xl text-[#FFD700]">⚡</span>
+          <span className='text-2xl text-white'>Olympus Meet</span>
+        </Link>
         </div>
-        <Suspense fallback="Loading">
-          <Tabs>
-            <DemoMeetingTab label="Demo" />
-            <CustomConnectionTab label="Custom" />
-          </Tabs>
-        </Suspense>
+      </nav>
+      <main className={styles.main}>
+        <div className={styles.hero}>
+          <div className={styles.header}>
+            <h1 className='text-4xl text-white'>Olympus Meet</h1>
+            <h2 className='text-lg text-white'>
+              Experience enterprise-grade video conferencing built for the Olympus social network. 
+              Connect, collaborate, and communicate with unparalleled security and clarity.
+            </h2>
+          </div>
+        </div>
+        <div className={styles.content}>
+          <Suspense fallback={
+            <div className="flex items-center justify-center p-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          }>
+            <Tabs>
+              <DemoMeetingTab label="Start" />
+              <CustomConnectionTab label="Custom" />
+            </Tabs>
+          </Suspense>
+        </div>
       </main>
-      <footer data-lk-theme="default">
-        Hosted on{' '}
-        <a href="https://livekit.io/cloud?ref=meet" rel="noopener">
-          LiveKit Cloud
-        </a>
-        . Source code on{' '}
-        <a href="https://github.com/livekit/meet?ref=meet" rel="noopener">
-          GitHub
-        </a>
-        .
+      <footer className={styles.footer}>
+        <div className={styles.footerContent}>
+        <Link href="https://olympus.prometheus-platform.io" className="flex items-center gap-2 font-semibold">
+          <span className="text-2xl text-[#FFD700]">⚡</span>
+          <span className='text-2xl text-white'>Olympus Social</span>
+        </Link>
+          <div className={styles.footerLinks}>
+            <a href="https://olympus.social" rel="noopener">Olympus Social</a>
+            <a href="https://meet.olympus.social" rel="noopener">Olympus Meet</a>
+            <a href="https://github.com/gqadonis/meet" rel="noopener">GitHub</a>
+          </div>
+          <div className={styles.copyright}>
+            © {new Date().getFullYear()} Olympus. All rights reserved.
+          </div>
+        </div>
       </footer>
     </>
   );

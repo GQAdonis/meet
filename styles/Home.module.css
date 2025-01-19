@@ -1,28 +1,141 @@
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.2);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.navContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem 2rem;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: white;
+  text-decoration: none;
+}
+
+.logo img {
+  height: 2rem;
+  width: auto;
+}
+
+.logo span {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
 .main {
   position: relative;
-  display: grid;
-  gap: 1rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+}
+
+.hero {
+  position: relative;
+  width: 100%;
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
   justify-content: center;
-  place-content: center;
-  justify-items: center;
-  overflow: auto;
-  flex-grow: 1;
+  padding: 6rem 2rem 3rem;
+  background-image: url('/images/cover.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.5));
+}
+
+.header {
+  position: relative;
+  text-align: center;
+  max-width: 800px;
+  color: white;
+  padding: 0 1rem;
+}
+
+.header h1 {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 1rem;
+  line-height: 1.1;
+  background: linear-gradient(to right, hsl(0 0% 100%), hsl(0 0% 90%));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.header h2 {
+  font-size: clamp(1.1rem, 3vw, 1.3rem);
+  color: hsl(0 0% 90%);
+  line-height: 1.5;
+  font-weight: 400;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.header h2 a {
+  color: hsl(var(--primary));
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.header h2 a:hover {
+  color: hsl(var(--accent));
+}
+
+.content {
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+  margin: -2rem auto 2rem;
+  padding: 0 2rem;
+  z-index: 10;
 }
 
 .tabContainer {
   width: 100%;
-  max-width: 500px;
-  padding-inline: 2rem;
+  max-width: 600px;
+  padding: 2rem;
+  background: hsl(var(--card));
+  border-radius: var(--radius);
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  margin: 0 auto;
 }
 
 .tabSelect {
   display: flex;
   justify-content: stretch;
-  gap: 0.125rem;
-  padding: 0.125rem;
+  gap: 0.5rem;
+  padding: 0.25rem;
   margin: 0 auto 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 0.5rem;
+  background: hsl(var(--secondary));
+  border-radius: var(--radius);
 }
 
 .tabSelect > * {
@@ -33,8 +146,84 @@
   display: flex;
   justify-content: center;
   flex-direction: column;
-  gap: 0.75rem;
-  padding: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 0.5rem;
+  gap: 1.5rem;
+  padding: 2rem;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+}
+
+.tabContent input[type="text"],
+.tabContent input[type="url"],
+.tabContent input[type="password"],
+.tabContent textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid hsl(var(--input));
+  border-radius: var(--radius);
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  transition: border-color 0.2s ease;
+}
+
+.tabContent input[type="text"]:focus,
+.tabContent input[type="url"]:focus,
+.tabContent input[type="password"]:focus,
+.tabContent textarea:focus {
+  outline: none;
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.1);
+}
+
+.footer {
+  width: 100%;
+  text-align: center;
+  padding: 4rem 2rem;
+  background: hsl(217 33% 17%);
+  color: hsl(0 0% 85%);
+  margin-top: auto;
+}
+
+.footerContent {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.footerLogo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.footerLogo img {
+  height: 1.5rem;
+  width: auto;
+}
+
+.footerLinks {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.footer a {
+  color: hsl(199 89% 48%);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.footer a:hover {
+  color: hsl(39 100% 50%);
+}
+
+.copyright {
+  color: hsl(0 0% 60%);
+  font-size: 0.875rem;
 }
