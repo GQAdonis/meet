@@ -30,13 +30,15 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy necessary files from builder
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+# Create necessary directories
+RUN mkdir -p /app/public && \
+    mkdir -p /app/.next/static && \
+    chown -R nextjs:nodejs /app
 
-# Set correct permissions
-RUN chown -R nextjs:nodejs /app
+# Copy necessary files from builder
+COPY --from=builder --chown=nextjs:nodejs /app/public/ ./public/
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/ ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static/ ./.next/static/
 
 # Switch to non-root user
 USER nextjs
@@ -44,7 +46,7 @@ USER nextjs
 # Expose port
 EXPOSE 3000
 
-# Set hostname (using proper ENV syntax)
+# Set hostname
 ENV HOSTNAME="0.0.0.0"
 
 # Start the application
