@@ -1,0 +1,90 @@
+# Project Structure Rules
+root_dir = "."
+no_src_dir = true
+app_router = true
+
+# Technology Stack
+next_version = "15"
+typescript = true
+state_management = "zustand"
+
+# TypeScript Configuration
+strict_types = true
+no_any = true
+enforce_types = true
+
+# Component Rules
+default_client_components = true
+analyze_server_components = true
+
+# Path Aliases
+path_aliases = [
+    ["@/*", "./app/*"],
+    ["@types/*", "./types/*"],
+    ["@lib/*", "./lib/*"],
+    ["@/components/*", "./components/*"],
+    ["@hooks/*", "./hooks/*"],
+    ["@store/*", "./store/*"],
+    ["@repositories/*", "./graphql/repositories/*"]
+]
+
+# Documentation
+docs_dir = "./docs"
+at_protocol_docs = true
+
+# Code Generation Rules
+[code_generation]
+enforce_use_client = true
+default_component_type = "client"
+enforce_strict_props = true
+enforce_return_types = true
+complete_file_only = true
+no_abbreviations = true
+ensure_compilable = true
+
+[typescript]
+strict = true
+no_implicit_any = true
+no_explicit_any = true
+isolatedModules = true
+esModuleInterop = true
+skipLibCheck = true
+forceConsistentCasingInFileNames = true
+
+[next]
+app_dir = true
+server_actions = true
+metadata_base = true
+
+[components]
+enforce_props_interface = true
+enforce_component_types = true
+prefer_arrow_functions = true
+enforce_named_exports = true
+
+[state_management]
+prefer_zustand = true
+enforce_store_types = true
+separate_store_files = true
+
+[imports]
+prefer_named_imports = true
+enforce_alias_paths = true
+no_relative_imports_beyond_parent = true
+
+[styling]
+prefer_tailwind = true
+enforce_class_variance_authority = true
+
+[documentation]
+require_component_docs = true
+require_function_docs = true
+require_interface_docs = true
+
+[code_completeness]
+require_full_file = true
+no_ellipsis = true
+no_partial_code = true
+ensure_all_imports = true
+ensure_all_types = true
+verify_compilation = true

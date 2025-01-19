@@ -7,15 +7,25 @@ import {
   TrackToggle,
   useRoomContext,
   useIsRecording,
+  useMediaDevices,
 } from '@livekit/components-react';
 import { useKrispNoiseFilter } from '@livekit/components-react/krisp';
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { useToast } from '@/components/ui/use-toast';
+import { useRecordingStore } from '@/store/recording';
+import { Card } from '@/components/ui/card';
+import { useBlueSkyStore } from '@/store/bluesky';
+import { Input } from '@/components/ui/input';
+import { Loader2 } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 
 /**
  * @alpha
@@ -29,26 +39,95 @@ export function SettingsMenu({ className, ...props }: SettingsMenuProps) {
   const layoutContext = useMaybeLayoutContext();
   const room = useRoomContext();
   const recordingEndpoint = process.env.NEXT_PUBLIC_LK_RECORD_ENDPOINT;
-
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = React.useState("media");
 
   const { isNoiseFilterEnabled, setNoiseFilterEnabled, isNoiseFilterPending } =
     useKrispNoiseFilter();
+
+  const [isRecording, setIsRecording] = React.useState(false);
+  const { startRecording, stopRecording, isRecording: storeIsRecording } = useRecordingStore();
+
+  const { isAuthenticated, handle, login, logout } = useBlueSkyStore();
+  const [isLoggingIn, setIsLoggingIn] = React.useState(false);
+  const [loginError, setLoginError] = React.useState<string | null>(null);
+  const [identifier, setIdentifier] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [showSaveDialog, setShowSaveDialog] = React.useState(false);
+  const [recordingTitle, setRecordingTitle] = React.useState('');
+  const [recordingDescription, setRecordingDescription] = React.useState('');
+  const [saveLocal, setSaveLocal] = React.useState(true);
+  const [uploadToPDS, setUploadToPDS] = React.useState(false);
+  const [customDirectory, setCustomDirectory] = React.useState('');
+  const [isSaving, setIsSaving] = React.useState(false);
 
   React.useEffect(() => {
     // enable Krisp by default
     setNoiseFilterEnabled(true);
   }, []);
 
-  const isRecording = useIsRecording();
-  const [initialRecStatus, setInitialRecStatus] = React.useState(isRecording);
-  const [processingRecRequest, setProcessingRecRequest] = React.useState(false);
-
-  React.useEffect(() => {
-    if (initialRecStatus !== isRecording) {
-      setProcessingRecRequest(false);
+  const handleStartRecording = async () => {
+    try {
+      await startRecording();
+      toast({
+        title: "Recording Started",
+        description: "Local recording has started. The file will be saved in your downloads when you stop.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Recording Error",
+        description: "Failed to start recording. Please check your permissions.",
+      });
     }
-  }, [isRecording, initialRecStatus]);
+  };
+
+  const handleStopRecording = async () => {
+    try {
+      await stopRecording();
+      setShowSaveDialog(true);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Recording Error",
+        description: "Failed to stop recording.",
+      });
+    }
+  };
+
+  const handleSaveRecording = async () => {
+    try {
+      setIsSaving(true);
+      await useRecordingStore.getState().saveRecording({
+        title: recordingTitle,
+        description: recordingDescription,
+        saveLocal,
+        uploadToPDS,
+        customDirectory: customDirectory || undefined
+      });
+
+      toast({
+        title: "Recording Saved",
+        description: uploadToPDS 
+          ? "Recording has been saved and uploaded to your PDS."
+          : "Recording has been saved locally.",
+      });
+
+      // Reset form
+      setRecordingTitle('');
+      setRecordingDescription('');
+      setCustomDirectory('');
+      setShowSaveDialog(false);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Save Error",
+        description: error instanceof Error ? error.message : "Failed to save recording.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const toggleRoomRecording = async () => {
     if (!recordingEndpoint) {
@@ -57,8 +136,7 @@ export function SettingsMenu({ className, ...props }: SettingsMenuProps) {
     if (room.isE2EEEnabled) {
       throw Error('Recording of encrypted meetings is currently not supported');
     }
-    setProcessingRecRequest(true);
-    setInitialRecStatus(isRecording);
+    setIsRecording(true);
     let response: Response;
     if (isRecording) {
       response = await fetch(recordingEndpoint + `/stop?roomName=${room.name}`);
@@ -72,121 +150,204 @@ export function SettingsMenu({ className, ...props }: SettingsMenuProps) {
         response.status,
         response.statusText,
       );
-      setProcessingRecRequest(false);
+      setIsRecording(false);
+    }
+  };
+
+  const handleBlueSkyLogin = async () => {
+    try {
+      setIsLoggingIn(true);
+      setLoginError(null);
+      await login(identifier, password);
+      toast({
+        title: "Login Successful",
+        description: "Successfully connected to BlueSky.",
+      });
+      setIdentifier('');
+      setPassword('');
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : 'Failed to login');
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: "Failed to connect to BlueSky. Please check your credentials.",
+      });
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
   return (
-    <Dialog defaultOpen={true} onOpenChange={() => layoutContext?.widget.dispatch?.({ msg: 'toggle_settings' })}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Settings</DialogTitle>
-        </DialogHeader>
-        <Tabs defaultValue="media" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="media">Media</TabsTrigger>
-            <TabsTrigger value="effects">Effects</TabsTrigger>
-            {recordingEndpoint && <TabsTrigger value="recording">Recording</TabsTrigger>}
-          </TabsList>
-          <TabsContent value="media" className="space-y-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Camera</Label>
-                <div className="flex items-center gap-2">
-                  <TrackToggle source={Track.Source.Camera} className={cn(
-                    "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors",
-                    "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-                    "disabled:pointer-events-none disabled:opacity-50",
-                    "bg-primary text-primary-foreground shadow hover:bg-primary/90",
-                    "h-9 px-4 py-2"
-                  )}>
-                    Camera
-                  </TrackToggle>
-                  <Select>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select camera" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <MediaDeviceMenu kind="videoinput" />
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+    <>
+      <Card className="fixed right-4 top-4 z-50 w-80 p-4 shadow-lg">
+        <div className="space-y-4">
+          <div>
+            <Label>Camera</Label>
+            <MediaDeviceMenu kind="videoinput" />
+          </div>
 
-              <div className="space-y-2">
-                <Label>Microphone</Label>
-                <div className="flex items-center gap-2">
-                  <TrackToggle source={Track.Source.Microphone} className={cn(
-                    "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors",
-                    "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-                    "disabled:pointer-events-none disabled:opacity-50",
-                    "bg-primary text-primary-foreground shadow hover:bg-primary/90",
-                    "h-9 px-4 py-2"
-                  )}>
-                    Microphone
-                  </TrackToggle>
-                  <Select>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select microphone" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <MediaDeviceMenu kind="audioinput" />
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+          <div>
+            <Label>Microphone</Label>
+            <MediaDeviceMenu kind="audioinput" />
+          </div>
 
-              <div className="space-y-2">
-                <Label>Speaker & Headphones</Label>
-                <Select>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select audio output" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <MediaDeviceMenu kind="audiooutput" />
-                  </SelectContent>
-                </Select>
+          <div className="space-y-2">
+            <Label>Local Recording</Label>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div className="space-y-0.5">
+                <Label>Record Meeting</Label>
+                <p className="text-sm text-muted-foreground">
+                  Save recording locally in your browser
+                </p>
               </div>
+              <Button
+                variant={storeIsRecording ? "destructive" : "default"}
+                onClick={storeIsRecording ? handleStopRecording : handleStartRecording}
+              >
+                {storeIsRecording ? 'Stop Recording' : 'Start Recording'}
+              </Button>
             </div>
-          </TabsContent>
+          </div>
 
-          <TabsContent value="effects" className="space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between space-x-2">
-                <Label htmlFor="noise-filter">Enhanced Noise Cancellation</Label>
-                <Switch
-                  id="noise-filter"
-                  checked={isNoiseFilterEnabled}
-                  onCheckedChange={setNoiseFilterEnabled}
-                  disabled={isNoiseFilterPending}
-                />
+          <Separator />
+
+          <div className="space-y-2">
+            <Label>BlueSky Integration</Label>
+            {isAuthenticated ? (
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div className="space-y-0.5">
+                  <Label>Connected as</Label>
+                  <p className="text-sm text-muted-foreground">{handle}</p>
+                </div>
+                <Button variant="outline" onClick={logout}>
+                  Disconnect
+                </Button>
               </div>
-            </div>
-          </TabsContent>
-
-          {recordingEndpoint && (
-            <TabsContent value="recording" className="space-y-6">
-              <div className="space-y-4">
+            ) : (
+              <div className="space-y-2 rounded-lg border p-3">
                 <div className="space-y-2">
-                  <Label>Record Meeting</Label>
-                  <p className="text-sm text-muted-foreground">
-                    {isRecording
-                      ? 'Meeting is currently being recorded'
-                      : 'No active recordings for this meeting'}
-                  </p>
-                  <Button 
-                    disabled={processingRecRequest}
-                    onClick={toggleRoomRecording}
-                    variant={isRecording ? "destructive" : "default"}
-                  >
-                    {isRecording ? 'Stop' : 'Start'} Recording
-                  </Button>
+                  <Label>BlueSky Handle</Label>
+                  <Input
+                    type="text"
+                    placeholder="your.handle"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                  />
                 </div>
+                <div className="space-y-2">
+                  <Label>Password</Label>
+                  <Input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+                {loginError && (
+                  <p className="text-sm text-destructive">{loginError}</p>
+                )}
+                <Button
+                  className="w-full"
+                  onClick={handleBlueSkyLogin}
+                  disabled={isLoggingIn || !identifier || !password}
+                >
+                  {isLoggingIn ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    'Connect to BlueSky'
+                  )}
+                </Button>
               </div>
-            </TabsContent>
-          )}
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+            )}
+          </div>
+        </div>
+      </Card>
+
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save Recording</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Title</Label>
+              <Input
+                placeholder="Meeting Recording"
+                value={recordingTitle}
+                onChange={(e) => setRecordingTitle(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                placeholder="Optional description..."
+                value={recordingDescription}
+                onChange={(e) => setRecordingDescription(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="save-local"
+                  checked={saveLocal}
+                  onCheckedChange={(checked) => setSaveLocal(checked as boolean)}
+                />
+                <Label htmlFor="save-local">Save locally</Label>
+              </div>
+
+              {saveLocal && (
+                <div className="space-y-2 pl-6">
+                  <Label>Custom Save Directory (optional)</Label>
+                  <Input
+                    placeholder="/path/to/directory"
+                    value={customDirectory}
+                    onChange={(e) => setCustomDirectory(e.target.value)}
+                  />
+                </div>
+              )}
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="upload-pds"
+                  checked={uploadToPDS}
+                  onCheckedChange={(checked) => setUploadToPDS(checked as boolean)}
+                  disabled={!isAuthenticated}
+                />
+                <Label htmlFor="upload-pds">
+                  Upload to PDS
+                  {!isAuthenticated && (
+                    <span className="ml-2 text-sm text-muted-foreground">
+                      (Requires BlueSky login)
+                    </span>
+                  )}
+                </Label>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveRecording}
+              disabled={isSaving || (!saveLocal && !uploadToPDS)}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Recording'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

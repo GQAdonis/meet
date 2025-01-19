@@ -43,6 +43,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from "@/components/ui/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 import { useChatStore } from '@/store/chat';
+import { useRecordingStore } from '@/store/recording';
 
 const preJoinFormSchema = z.object({
   username: z.string().min(2, {
@@ -52,6 +53,7 @@ const preJoinFormSchema = z.object({
   audioEnabled: z.boolean().default(true),
   videoDeviceId: z.string().optional(),
   audioDeviceId: z.string().optional(),
+  shareOnOlympus: z.boolean().default(false),
 });
 
 type PreJoinFormValues = z.infer<typeof preJoinFormSchema>;
@@ -80,6 +82,7 @@ export function PageClientImpl(props: {
       username: '',
       videoEnabled: true,
       audioEnabled: true,
+      shareOnOlympus: false,
     },
   });
 
@@ -103,6 +106,15 @@ export function PageClientImpl(props: {
         videoDeviceId: values.videoDeviceId ?? '',
         audioDeviceId: values.audioDeviceId ?? '',
       });
+
+      // If sharing on Olympus is enabled, we would make an API call here
+      if (values.shareOnOlympus) {
+        // TODO: Implement Olympus Social sharing API
+        console.log('Sharing room on Olympus:', {
+          roomName: props.roomName,
+          hostName: values.username,
+        });
+      }
     } catch (error) {
       console.error('Failed to join room:', error);
       form.setError('root', {
@@ -183,6 +195,26 @@ export function PageClientImpl(props: {
                           </FormItem>
                         )}
                       />
+                      <FormField
+                        control={form.control}
+                        name="shareOnOlympus"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                            <div className="space-y-0.5">
+                              <FormLabel>Share on Olympus Social</FormLabel>
+                              <FormDescription>
+                                Make this room visible on Olympus Social for others to join
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
                     </div>
                     <Button type="submit" className="w-full" disabled={isLoading}>
                       {isLoading && (
@@ -218,13 +250,16 @@ function VideoConferenceComponent(props: {
 }) {
   const { toast } = useToast();
   const layoutContext = useMaybeLayoutContext();
+  const { setRoom: setRecordingRoom } = useRecordingStore();
+  
   const e2eePassphrase =
-    typeof window !== 'undefined' && decodePassphrase(location.hash.substring(1));
-
+    typeof window !== 'undefined' ? decodePassphrase(location.hash.substring(1)) : null;
+  
   const worker =
     typeof window !== 'undefined' &&
     e2eePassphrase &&
     new Worker(new URL('livekit-client/e2ee-worker', import.meta.url));
+  
   const e2eeEnabled = !!(e2eePassphrase && worker);
   const keyProvider = new ExternalE2EEKeyProvider();
   const [e2eeSetupComplete, setE2eeSetupComplete] = React.useState(false);
@@ -262,6 +297,7 @@ function VideoConferenceComponent(props: {
       videoCaptureDefaults: {
         deviceId: props.userChoices.videoDeviceId ?? undefined,
         resolution: props.options.hq ? VideoPresets.h2160 : VideoPresets.h720,
+        facingMode: 'user',
       },
       publishDefaults: {
         dtx: false,
@@ -270,9 +306,16 @@ function VideoConferenceComponent(props: {
           : [VideoPresets.h540, VideoPresets.h216],
         red: !e2eeEnabled,
         videoCodec,
+        stopMicTrackOnMute: true,
+        videoEncoding: {
+          maxBitrate: 1_500_000,
+          maxFramerate: 30,
+        },
       },
       audioCaptureDefaults: {
         deviceId: props.userChoices.audioDeviceId ?? undefined,
+        echoCancellation: true,
+        noiseSuppression: true,
       },
       adaptiveStream: { pixelDensity: 'screen' },
       dynacast: true,
@@ -317,22 +360,56 @@ function VideoConferenceComponent(props: {
   React.useEffect(() => {
     const handleParticipantUpdated = () => {
       if (room.localParticipant) {
+        console.log('Camera state:', {
+          isCameraEnabled: room.localParticipant.isCameraEnabled,
+          tracks: Array.from(room.localParticipant.trackPublications.values()).map(t => ({
+            kind: t.kind,
+            source: t.source,
+            isSubscribed: t.isSubscribed,
+            trackSid: t.trackSid
+          }))
+        });
         setIsCameraEnabled(room.localParticipant.isCameraEnabled);
         setIsMicrophoneEnabled(room.localParticipant.isMicrophoneEnabled);
         setIsScreenShareEnabled(room.localParticipant.isScreenShareEnabled);
       }
     };
 
-    room.on('connected', handleParticipantUpdated);
-    room.on('localTrackPublished', handleParticipantUpdated);
-    room.on('localTrackUnpublished', handleParticipantUpdated);
+    const handleTrackSubscribed = () => {
+      console.log('Track subscribed event');
+      handleParticipantUpdated();
+    };
+
+    const handleTrackUnsubscribed = () => {
+      console.log('Track unsubscribed event');
+      handleParticipantUpdated();
+    };
+
+    room.on('connected', () => {
+      console.log('Room connected');
+      handleParticipantUpdated();
+    });
+    room.on('disconnected', () => console.log('Room disconnected'));
+    room.on('localTrackPublished', () => {
+      console.log('Local track published');
+      handleParticipantUpdated();
+    });
+    room.on('localTrackUnpublished', () => {
+      console.log('Local track unpublished');
+      handleParticipantUpdated();
+    });
+    room.on('trackSubscribed', handleTrackSubscribed);
+    room.on('trackUnsubscribed', handleTrackUnsubscribed);
     room.localParticipant?.on('trackMuted', handleParticipantUpdated);
     room.localParticipant?.on('trackUnmuted', handleParticipantUpdated);
 
     return () => {
       room.off('connected', handleParticipantUpdated);
+      room.off('disconnected', () => {});
       room.off('localTrackPublished', handleParticipantUpdated);
       room.off('localTrackUnpublished', handleParticipantUpdated);
+      room.off('trackSubscribed', handleTrackSubscribed);
+      room.off('trackUnsubscribed', handleTrackUnsubscribed);
       room.localParticipant?.off('trackMuted', handleParticipantUpdated);
       room.localParticipant?.off('trackUnmuted', handleParticipantUpdated);
     };
@@ -387,11 +464,13 @@ function VideoConferenceComponent(props: {
   const router = useRouter();
   const handleOnLeave = React.useCallback(() => router.push('/'), [router]);
   const handleError = React.useCallback((error: Error) => {
-    console.error(error);
+    console.error('Room connection error:', error);
     toast({
       variant: "destructive",
-      title: "Error",
-      description: `Encountered an unexpected error: ${error.message}`,
+      title: "Connection Error",
+      description: error instanceof DeviceUnsupportedError 
+        ? "Your browser doesn't support the required camera features. Please try a different browser."
+        : `Failed to connect: ${error.message}. Please check your camera permissions and try again.`,
     });
   }, [toast]);
   
@@ -403,6 +482,16 @@ function VideoConferenceComponent(props: {
       description: `Encountered an encryption error: ${error.message}`,
     });
   }, [toast]);
+
+  React.useEffect(() => {
+    // Set room in recording store
+    setRecordingRoom(room);
+    
+    // Cleanup on unmount
+    return () => {
+      setRecordingRoom(null);
+    };
+  }, [room, setRecordingRoom]);
 
   return (
     <Card className="relative flex h-full w-full flex-col overflow-hidden bg-gradient-to-b from-background/95 to-background/50 backdrop-blur supports-[backdrop-filter]:bg-background/60">

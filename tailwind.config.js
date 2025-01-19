@@ -6,6 +6,23 @@ export default {
     "./components/**/*.{js,ts,jsx,tsx}",
     "./app/**/*.{js,ts,jsx,tsx}"
   ],
+  webpack: (config) => {
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      crypto: 'crypto-browserify',
+      stream: 'stream-browserify',
+      buffer: 'buffer',
+      path: 'path-browserify'
+    };
+
+    // Handle binary files
+    config.module.rules.push({
+      test: /\.wasm$/,
+      type: 'asset/resource'
+    });
+
+    return config;
+  },
   theme: {
   	extend: {
   		borderRadius: {
@@ -89,6 +106,10 @@ export default {
   		}
   	}
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    // require("@assistant-ui/react/tailwindcss")({ shadcn: true }),
+    // require("@assistant-ui/react-markdown/tailwindcss"),
+  ],
 }
 

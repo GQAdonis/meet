@@ -1,254 +1,146 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import React, { Suspense, useState } from 'react';
-import { encodePassphrase, generateRoomId, randomString } from '@/lib/client-utils';
-import styles from '@/styles/Home.module.css';
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import * as React from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { useRoomStore } from '@/store/room';
+import { RefreshCw } from 'lucide-react';
 import Link from 'next/link';
+import { CustomSettingsSheet } from '@/app/components/ui/custom-settings-sheet';
 
-interface TabChildProps {
-  label: string;
-}
-
-interface TabsProps {
-  children: React.ReactElement<TabChildProps>[];
-}
-
-function Tabs({ children }: TabsProps): React.ReactElement {
-  const searchParams = useSearchParams();
-  const tabIndex = searchParams?.get('tab') === 'custom' ? 1 : 0;
-
+export default function Home() {
   const router = useRouter();
-  function onTabSelected(index: number) {
-    const tab = index === 1 ? 'custom' : 'demo';
-    router.push(`/?tab=${tab}`);
-  }
+  const { roomName, setRoomName, generateNewRoomName } = useRoomStore();
+  const [customSettingsOpen, setCustomSettingsOpen] = React.useState(false);
 
-  const tabs = React.Children.map(children, (child, index) => {
-    if (!React.isValidElement<TabChildProps>(child)) return null;
-    return (
-      <Button
-        variant={tabIndex === index ? "default" : "secondary"}
-        onClick={() => onTabSelected(index)}
-        className="w-full"
-        size="lg"
-      >
-        {child.props.label}
-      </Button>
-    );
-  });
-
-  return (
-    <Card className={styles.tabContainer}>
-      <div className={styles.tabSelect}>{tabs}</div>
-      {React.Children.toArray(children)[tabIndex]}
-    </Card>
-  );
-}
-
-function DemoMeetingTab(props: { label: string }) {
-  const router = useRouter();
-  const [e2ee, setE2ee] = useState(false);
-  const [sharedPassphrase, setSharedPassphrase] = useState(randomString(64));
-  
-  const startMeeting = () => {
-    if (e2ee) {
-      router.push(`/rooms/${generateRoomId()}#${encodePassphrase(sharedPassphrase)}`);
-    } else {
-      router.push(`/rooms/${generateRoomId()}`);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (roomName.trim()) {
+      router.push(`/rooms/${roomName}`);
     }
   };
-  
-  return (
-    <div className={styles.tabContent}>
-      <div className="space-y-2">
-        <h3 className="text-lg font-semibold text-foreground">
-          Try Olympus Meet for free using your BlueSky account
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          Start a meeting and invite your friends to join. Use the custom button to change servers.
-        </p>
-      </div>
-      <Button 
-        size="lg"
-        className="w-full"
-        onClick={startMeeting}
-      >
-        Start Meeting
-      </Button>
-      <div className="space-y-4">
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="use-e2ee"
-            checked={e2ee}
-            onCheckedChange={(checked) => setE2ee(checked as boolean)}
-          />
-          <Label htmlFor="use-e2ee">Enable end-to-end encryption</Label>
-        </div>
-        {e2ee && (
-          <div className="space-y-2">
-            <Label htmlFor="passphrase">Passphrase</Label>
-            <Input
-              id="passphrase"
-              type="password"
-              value={sharedPassphrase}
-              onChange={(ev) => setSharedPassphrase(ev.target.value)}
-            />
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
-function CustomConnectionTab(props: { label: string }) {
-  const router = useRouter();
-  const [e2ee, setE2ee] = useState(false);
-  const [sharedPassphrase, setSharedPassphrase] = useState(randomString(64));
-  const [pdsServer, setPdsServer] = useState('https://bsky.social');
-
-  const onSubmit: React.FormEventHandler<HTMLFormElement> = (event) => {
-    event.preventDefault();
-    const formData = new FormData(event.target as HTMLFormElement);
-    const serverUrl = formData.get('serverUrl');
-    const token = formData.get('token');
-    const pdsUrl = formData.get('pdsUrl');
-    if (e2ee) {
-      router.push(
-        `/custom/?liveKitUrl=${serverUrl}&token=${token}&pdsUrl=${pdsUrl}#${encodePassphrase(sharedPassphrase)}`,
-      );
-    } else {
-      router.push(`/custom/?liveKitUrl=${serverUrl}&token=${token}&pdsUrl=${pdsUrl}`);
-    }
-  };
-  
-  return (
-    <form className={styles.tabContent} onSubmit={onSubmit}>
-      <p className="text-lg text-muted-foreground">
-        Connect Olympus Meet to your preferred LiveKit server while authenticating through your chosen AT Protocol PDS server for a fully customized experience.
-      </p>
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="pdsUrl">PDS Server URL</Label>
-          <Input
-            id="pdsUrl"
-            name="pdsUrl"
-            type="url"
-            value={pdsServer}
-            onChange={(e) => setPdsServer(e.target.value)}
-            placeholder="BlueSky PDS Server URL: https://bsky.social"
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="serverUrl">LiveKit Server URL</Label>
-          <Input
-            id="serverUrl"
-            name="serverUrl"
-            type="url"
-            placeholder="LiveKit Server URL: wss://*.livekit.cloud"
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="token">Token</Label>
-          <Textarea
-            id="token"
-            name="token"
-            placeholder="Token"
-            required
-            rows={5}
-          />
-        </div>
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="use-e2ee"
-              checked={e2ee}
-              onCheckedChange={(checked) => setE2ee(checked as boolean)}
-            />
-            <Label htmlFor="use-e2ee">Enable end-to-end encryption</Label>
-          </div>
-          {e2ee && (
-            <div className="space-y-2">
-              <Label htmlFor="passphrase">Passphrase</Label>
-              <Input
-                id="passphrase"
-                type="password"
-                value={sharedPassphrase}
-                onChange={(ev) => setSharedPassphrase(ev.target.value)}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-      <Button
-        size="lg"
-        className="w-full"
-        type="submit"
-      >
-        Connect
-      </Button>
-    </form>
-  );
-}
-
-export default function Page() {
   return (
     <>
-      <nav className={styles.navbar}>
-        <div className={styles.navContent}>
-        <Link href="/" className="flex items-center gap-2 font-semibold">
-          <span className="text-2xl text-[#FFD700]">⚡</span>
-          <span className='text-2xl text-white'>Olympus Meet</span>
-        </Link>
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-sm border-b border-white/10">
+        <div className="container flex h-16 items-center px-8">
+          <Link href="/" className="flex items-center gap-2 font-semibold">
+            <span className="text-2xl text-[#FFD700]">⚡</span>
+            <span className="text-2xl text-white">Olympus Meet</span>
+          </Link>
         </div>
       </nav>
-      <main className={styles.main}>
-        <div className={styles.hero}>
-          <div className={styles.header}>
-            <h1 className='text-4xl text-white'>Olympus Meet</h1>
-            <h2 className='text-lg text-white'>
-              Experience enterprise-grade video conferencing built for the Olympus social network. 
-              Connect, collaborate, and communicate with unparalleled security and clarity.
-            </h2>
+
+      <main className="flex min-h-screen flex-col">
+        <div className="relative flex-1">
+          {/* Hero Section */}
+          <div 
+            className="absolute inset-0 bg-[url('/images/cover.png')] bg-cover bg-center"
+            style={{
+              backgroundImage: "url('/images/cover.png')",
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'center',
+              backgroundSize: 'cover'
+            }}
+          >
+            <div className="absolute inset-0" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }} />
           </div>
-        </div>
-        <div className={styles.content}>
-          <Suspense fallback={
-            <div className="flex items-center justify-center p-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          
+          {/* Content */}
+          <div className="relative flex min-h-screen flex-col items-center justify-center">
+            <div className="flex flex-col items-center space-y-4 text-center mb-8 px-4">
+              <h1 className="text-6xl font-bold tracking-tighter text-white">
+                Olympus Meet
+              </h1>
+              <p className="text-xl text-white/80 max-w-[600px]">
+                Experience enterprise-grade video conferencing built for the Olympus social network. 
+                Connect, collaborate, and communicate with unparalleled security and clarity.
+              </p>
             </div>
-          }>
-            <Tabs>
-              <DemoMeetingTab label="Start" />
-              <CustomConnectionTab label="Custom" />
-            </Tabs>
-          </Suspense>
+
+            <div className="w-full max-w-md px-4">
+              <Card className="bg-black/70 backdrop-blur-sm border-white/10">
+                <form onSubmit={handleSubmit}>
+                  <CardHeader>
+                    <CardTitle className="text-white">Start or Join Meeting</CardTitle>
+                    <CardDescription className="text-white/60">
+                      Enter a room name or use the generated one
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex gap-2">
+                      <div className="grid flex-1 gap-2">
+                        <Label htmlFor="roomName" className="text-white/80">Room Name</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="roomName"
+                            placeholder="Enter room name"
+                            value={roomName}
+                            onChange={(e) => setRoomName(e.target.value)}
+                            className="bg-black/50 border-white/20 text-white placeholder:text-white/40"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={generateNewRoomName}
+                            className="bg-black border-white/20 text-white hover:bg-black/80"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex flex-col gap-2">
+                    <Button type="submit" className="w-full">
+                      Start Meeting
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full bg-black border-white/20 text-white hover:bg-black/80"
+                      onClick={() => setCustomSettingsOpen(true)}
+                    >
+                      Custom Setup
+                    </Button>
+                  </CardFooter>
+                </form>
+              </Card>
+            </div>
+          </div>
         </div>
       </main>
-      <footer className={styles.footer}>
-        <div className={styles.footerContent}>
-        <Link href="https://olympus.prometheus-platform.io" className="flex items-center gap-2 font-semibold">
-          <span className="text-2xl text-[#FFD700]">⚡</span>
-          <span className='text-2xl text-white'>Olympus Social</span>
-        </Link>
-          <div className={styles.footerLinks}>
-            <a href="https://olympus.social" rel="noopener">Olympus Social</a>
-            <a href="https://meet.olympus.social" rel="noopener">Olympus Meet</a>
-            <a href="https://github.com/gqadonis/meet" rel="noopener">GitHub</a>
-          </div>
-          <div className={styles.copyright}>
-            © {new Date().getFullYear()} Olympus. All rights reserved.
+
+      <footer className="fixed bottom-0 left-0 right-0 border-t border-white/10 bg-black/50">
+        <div className="container mx-auto px-8">
+          <div className="flex h-24 items-center justify-between">
+            <Link href="https://olympus.prometheus-platform.io" className="flex items-center gap-2 font-semibold">
+              <span className="text-2xl text-[#FFD700]">⚡</span>
+              <span className="text-2xl text-white">Olympus Social</span>
+            </Link>
+            <div className="flex items-center gap-8">
+              <Link href="https://olympus.social" className="text-sm text-white hover:text-[#FFD700]">
+                Olympus Social
+              </Link>
+              <Link href="https://meet.olympus.social" className="text-sm text-white hover:text-[#FFD700]">
+                Olympus Meet
+              </Link>
+              <Link href="https://github.com/gqadonis/meet" className="text-sm text-white hover:text-[#FFD700]">
+                GitHub
+              </Link>
+            </div>
           </div>
         </div>
       </footer>
+
+      <CustomSettingsSheet 
+        open={customSettingsOpen}
+        onOpenChange={setCustomSettingsOpen}
+      />
     </>
   );
 }
