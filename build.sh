@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker buildx build -f tribehealth/olympus-meet:latest --push --platform=linux/amd64,linux/arm64 .
+docker buildx build -t tribehealth/olympus-meet:latest --push --platform=linux/amd64,linux/arm64 .
