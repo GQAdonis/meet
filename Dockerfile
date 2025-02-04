@@ -27,7 +27,7 @@ WORKDIR /app
 RUN npm install -g pnpm@latest
 
 # Copy necessary files from builder
-COPY --from=builder /app/next.config.js ./
+COPY --from=builder /app/next.config.mjs ./
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static

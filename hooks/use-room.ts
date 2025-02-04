@@ -2,12 +2,12 @@ import { useRoomStore } from "@/stores/room-store"
 import { useCallback } from "react"
 import type { LocalUserChoices } from "@livekit/components-react"
 import type { ConnectionDetails } from "@/lib/types"
-import { useRoomContext } from "@livekit/components-react"
+import { useRoomContextSafe } from "@/components/providers/room-context-provider"
 
 export function useRoom() {
   const { isInRoom, localUser, connectionDetails, setLocalUser, setConnectionDetails, joinRoom, leaveRoom } =
     useRoomStore()
-  const room = useRoomContext()
+  const { room } = useRoomContextSafe()
 
   const setLocalUserCallback = useCallback(
     (user: LocalUserChoices) => {

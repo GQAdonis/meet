@@ -39,13 +39,13 @@ export function RoomCreator() {
 
   const startMeeting = () => {
     try {
+      console.log('Starting meeting with room name:', roomName);
       roomSchema.parse({ roomName })
-      if (e2ee) {
-        router.push(`/rooms/${roomName}#${encodePassphrase(sharedPassphrase)}`)
-      } else {
-        router.push(`/rooms/${roomName}`)
-      }
+      const targetUrl = e2ee ? `/rooms/${roomName}#${encodePassphrase(sharedPassphrase)}` : `/rooms/${roomName}`;
+      console.log('Navigating to:', targetUrl);
+      router.push(targetUrl)
     } catch (error) {
+      console.error('Error starting meeting:', error);
       if (error instanceof z.ZodError) {
         setValidationError("Room name must contain only lowercase letters, numbers, and hyphens")
       }
@@ -90,7 +90,7 @@ export function RoomCreator() {
                 variant="outline"
                 size="icon"
                 onClick={refreshRoomName}
-                className="flex-shrink-0 hover:bg-white/20 border-white/20 text-white"
+                className="flex-shrink-0 hover:bg-white/20 border-white/20 text-black dark:text-white"
               >
                 <RefreshCw className="h-4 w-4" />
               </Button>
@@ -131,7 +131,7 @@ export function RoomCreator() {
             )}
           </div>
 
-          <Button variant="default" size="lg" className="w-full font-medium bg-white text-background hover:bg-white/90" onClick={startMeeting}>
+          <Button variant="default" size="lg" className="w-full font-medium bg-white text-black hover:bg-white/90 dark:bg-background dark:text-white dark:hover:bg-background/90" onClick={startMeeting}>
             Start Meeting
           </Button>
         </div>

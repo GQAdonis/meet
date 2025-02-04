@@ -22,6 +22,8 @@ export function ChatSidebar() {
   const [privateTabs, setPrivateTabs] = React.useState<string[]>([])
 
   React.useEffect(() => {
+    if (!room) return;
+
     const handleData = (payload: Uint8Array, participant?: RemoteParticipant) => {
       if (!participant) return; // Guard clause for undefined participant
       const decodedMessage = new TextDecoder().decode(payload)
@@ -36,6 +38,8 @@ export function ChatSidebar() {
   }, [room])
 
   const sendMessage = (to?: RemoteParticipant) => {
+    if (!room) return; // Add guard clause
+    
     const message = {
       content: inputMessage,
       isPrivate: !!to,
@@ -105,6 +109,7 @@ export function ChatSidebar() {
           />
           <Button
             onClick={() => {
+              if (!room) return;
               const participant = activeTab !== "all" ? room.getParticipantByIdentity(activeTab) : undefined;
               if (participant && !participant.isLocal) {
                 sendMessage(participant as RemoteParticipant);

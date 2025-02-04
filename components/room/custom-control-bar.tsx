@@ -22,7 +22,9 @@ export function CustomControlBar({ onChatToggle }: CustomControlBarProps) {
   }
 
   const leaveRoom = () => {
-    room.disconnect()
+    if (room) {
+      room.disconnect()
+    }
   }
 
   return (
@@ -42,4 +44,3 @@ export function CustomControlBar({ onChatToggle }: CustomControlBarProps) {
     </div>
   )
 }
-

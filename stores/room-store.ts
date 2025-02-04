@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import { createJSONStorage, persist } from "zustand/middleware"
 import type { LocalUserChoices } from "@livekit/components-react"
 import type { ConnectionDetails } from "@/lib/types"
 
@@ -12,7 +13,7 @@ interface RoomState {
   leaveRoom: () => void
 }
 
-export const useRoomStore = create<RoomState>((set) => ({
+export const useRoomStore = create<RoomState>()(persist((set) => ({
   isInRoom: false,
   localUser: null,
   connectionDetails: null,
@@ -20,5 +21,9 @@ export const useRoomStore = create<RoomState>((set) => ({
   setConnectionDetails: (details) => set({ connectionDetails: details }),
   joinRoom: () => set({ isInRoom: true }),
   leaveRoom: () => set({ isInRoom: false, localUser: null, connectionDetails: null }),
+}), {
+  name: 'room-storage',
+  storage: createJSONStorage(() => sessionStorage),
+  skipHydration: true
 }))
 

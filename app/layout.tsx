@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { RoomContextProvider } from "@/components/providers/room-context-provider"
 import type React from "react" // Added import for React
 
 const inter = Inter({ subsets: ["latin"] })
@@ -20,7 +21,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {children}
+          <RoomContextProvider>
+            {children}
+          </RoomContextProvider>
         </ThemeProvider>
       </body>
     </html>

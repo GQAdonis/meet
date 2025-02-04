@@ -3,6 +3,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { LogOut, Settings, User } from 'lucide-react';
 import Image from 'next/image';
 
 export default function Header() {
@@ -21,21 +22,18 @@ export default function Header() {
               <AvatarFallback>U</AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem>
-              <span className="flex items-center gap-2">
-                <i className="lucide lucide-user" /> Profile
-              </span>
+          <DropdownMenuContent className="w-56 bg-black/90 backdrop-blur-md border-zinc-800">
+            <DropdownMenuItem className="text-white hover:bg-white/10 cursor-pointer">
+              <User className="mr-2 h-4 w-4" />
+              <span>Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              <span className="flex items-center gap-2">
-                <i className="lucide lucide-settings" /> Settings
-              </span>
+            <DropdownMenuItem className="text-white hover:bg-white/10 cursor-pointer">
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Settings</span>
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              <span className="flex items-center gap-2">
-                <i className="lucide lucide-log-out" /> Logout
-              </span>
+            <DropdownMenuItem className="text-white hover:bg-white/10 cursor-pointer">
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Logout</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

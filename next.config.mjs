@@ -2,6 +2,13 @@
 const nextConfig = {
   reactStrictMode: false,
   productionBrowserSourceMaps: true,
+  webpack: (config, { dev, isServer }) => {
+    // Enable source maps in development
+    if (dev) {
+      config.devtool = 'eval-source-map';
+    }
+    return config;
+  },
   output: 'standalone',
   images: {
     remotePatterns: [
@@ -39,6 +46,15 @@ const nextConfig = {
       enforce: 'pre',
       use: ['source-map-loader'],
     });
+
+    // Prevent auth-store from being compiled on the server
+    if (isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        './auth-store': false,
+      };
+    }
+
     return config;
   },
 };

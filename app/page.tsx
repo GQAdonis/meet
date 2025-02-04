@@ -3,12 +3,17 @@
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Card } from "@/components/ui/card"
-import { Camera, MessageSquare, Users, Video, Shield } from "lucide-react"
+import { Camera, MessageSquare, Users, Video, Shield, User, Settings, LogOut } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { RoomCreator } from "@/components/meeting/room-creator"
+import { useAuth } from "@/hooks/use-auth"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function Home() {
+  const { isAuthenticated, logout, profile } = useAuth()
+
   return (
     <div className="min-h-screen">
       <header className="border-b bg-background sticky top-0 z-50">
@@ -36,9 +41,37 @@ export default function Home() {
               </Link>
             </nav>
             <ThemeToggle />
-            <Button variant="default">
-              Sign In with BlueSky
-            </Button>
+            {isAuthenticated() && profile && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="outline-none">
+                    <Avatar className="h-8 w-8 cursor-pointer hover:opacity-80">
+                      <AvatarImage src={profile.avatar} alt={profile.displayName} />
+                      <AvatarFallback>{profile.displayName?.[0]?.toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 bg-black/90 backdrop-blur-md border-zinc-800">
+                    <DropdownMenuItem className="text-white hover:bg-white/10 cursor-pointer">
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-white hover:bg-white/10 cursor-pointer">
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Settings</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => logout()} className="text-white hover:bg-white/10 cursor-pointer">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Logout</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            {!isAuthenticated && (
+              <Link href="/login">
+                <Button variant="default">
+                  Sign In with BlueSky
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -121,9 +154,11 @@ export default function Home() {
         <section className="py-20 bg-background">
           <div className="container mx-auto px-4 text-center">
             <h2 className="text-3xl font-bold mb-12 text-foreground">Ready to Get Started?</h2>
-            <Button size="lg" variant="default">
-              Join SkyTok Meet Now
-            </Button>
+            <Link href="/login">
+              <Button size="lg" variant="default">
+                Join SkyTok Meet Now
+              </Button>
+            </Link>
           </div>
         </section>
       </main>

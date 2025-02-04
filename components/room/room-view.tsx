@@ -1,13 +1,13 @@
 'use client';
 
 import React from "react"
-import "@livekit/components-styles"
 import { useRoom } from "@/hooks/use-room"
-import { LiveKitRoom, VideoConference } from "@livekit/components-react"
+import { VideoConference } from "@livekit/components-react"
 import { CustomControlBar } from "@/components/room/custom-control-bar"
 import { ChatSidebar } from "@/components/room/chat-sidebar"
 import { CustomParticipantTile } from "./custom-participant-tile"
 import type { ConnectionDetails } from "@/lib/types"
+import { LiveKitProvider } from "@/components/providers/livekit-provider"
 
 export function RoomView({ roomName }: { roomName: string }) {
   const { localUser } = useRoom()
@@ -41,7 +41,7 @@ export function RoomView({ roomName }: { roomName: string }) {
   if (!localUser || !connectionDetails) return null
 
   return (
-    <LiveKitRoom
+    <LiveKitProvider
       serverUrl={connectionDetails.serverUrl}
       token={connectionDetails.participantToken}
       connect={true}
@@ -55,6 +55,6 @@ export function RoomView({ roomName }: { roomName: string }) {
         </div>
         {isChatOpen && <ChatSidebar />}
       </div>
-    </LiveKitRoom>
+    </LiveKitProvider>
   )
 }

@@ -2,10 +2,11 @@
 
 import { useState } from "react"
 import { useAuth } from "@/hooks/use-auth"
-import { useRouter } from "next/router"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useToast } from "@/hooks/use-toast"
 
 export function RegisterForm() {
   const [email, setEmail] = useState("")
@@ -13,18 +14,45 @@ export function RegisterForm() {
   const [password, setPassword] = useState("")
   const { agent } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirect = searchParams.get('redirect')
+  const toast = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await agent.createAccount({
+      const session = await agent.createAccount({
         email,
         handle: username,
         password,
       })
-      router.push("/login") // Redirect to login page after successful registration
+      if (!session) {
+        throw new Error("Registration failed")
+      }
+      // After successful registration, redirect to login page with the redirect parameter
+      if (redirect) {
+        const decodedPath = decodeURIComponent(redirect)
+        // Check if the redirect path is a full URL or just a path
+        if (decodedPath.startsWith('http')) {
+          const loginUrl = `/login?redirect=${encodeURIComponent(decodedPath)}`
+          router.push(loginUrl)
+        } else {
+          // Construct the full URL using NEXT_PUBLIC_APP_URL
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+          const fullUrl = baseUrl + (decodedPath.startsWith('/') ? decodedPath : `/${decodedPath}`)
+          const loginUrl = `/login?redirect=${encodeURIComponent(fullUrl)}`
+          router.push(loginUrl)
+        }
+      } else {
+        router.push('/login')
+      }
     } catch (error) {
       console.error("Registration failed:", error)
+      toast.toast({
+        title: "Registration failed",
+        description: "Please check your credentials and try again.",
+        variant: "destructive",
+      })
       // Handle registration error (e.g., show error message to user)
     }
   }
