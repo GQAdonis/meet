@@ -28,7 +28,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   error: null,
   setError: (error: string | null) => set({ error }),
   isAuthenticated: () => get().session !== null,
-  setSession: (session) => set({ session, }),
+  setSession: async (session) => {
+    const agent = get().agent
+    if (session && agent) {
+      try {
+        const profile = await agent.app.bsky.actor.getProfile({ actor: session.handle })
+        set({ session, profile: profile.data })
+      } catch (error) {
+        console.error('Failed to fetch profile:', error)
+        set({ session, profile: null })
+      }
+    } else {
+      set({ session, profile: null })
+    }
+  },
   setAgent: (agent) => set({ agent }),
   login: async (identifier: string, password: string) : Promise<AtpSessionData | null> => {
     try {
@@ -108,14 +121,15 @@ const agent = new AtpAgent({
 useAuthStore.getState().setAgent(agent)
 
 // Handle session persistence
-const handleSessionUpdate = (session: AtpSessionData | null) => {
+const handleSessionUpdate = async (session: AtpSessionData | null) : Promise<void> =>  {
   if (typeof window === 'undefined') return; // Skip on server side
   
   if (session) {
-    useAuthStore.getState().setSession(session)
+    const profile = await agent.app.bsky.actor.getProfile({ actor: session.handle })
+    await useAuthStore.setState({session, profile: profile.data})
     localStorage.setItem("atpSession", JSON.stringify(session))
   } else {
-    useAuthStore.getState().setSession(null)
+    await useAuthStore.setState({session: null, profile: null})
     localStorage.removeItem("atpSession")
   }
 }

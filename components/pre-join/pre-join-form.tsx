@@ -237,11 +237,13 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {videoDevicesRef.current.map((device) => (
-                            <SelectItem key={device.deviceId} value={device.deviceId}>
-                              {device.label || `Camera ${device.deviceId.slice(0, 4)}`}
-                            </SelectItem>
-                          ))}
+                          {videoDevicesRef.current
+                            .filter((device) => device.deviceId !== '')
+                            .map((device) => (
+                              <SelectItem key={device.deviceId} value={device.deviceId}>
+                                {device.label || `Camera ${device.deviceId.slice(0, 4)}`}
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -266,11 +268,13 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {audioDevicesRef.current.map((device) => (
-                              <SelectItem key={device.deviceId} value={device.deviceId}>
-                                {device.label || `Microphone ${device.deviceId.slice(0, 4)}`}
-                              </SelectItem>
-                            ))}
+                            {audioDevicesRef.current
+                              .filter((device) => device.deviceId !== '')
+                              .map((device) => (
+                                <SelectItem key={device.deviceId} value={device.deviceId}>
+                                  {device.label || `Microphone ${device.deviceId.slice(0, 4)}`}
+                                </SelectItem>
+                              ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -296,11 +300,13 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {audioOutputDevicesRef.current.map((device) => (
-                            <SelectItem key={device.deviceId} value={device.deviceId}>
-                              {device.label || `Speaker ${device.deviceId.slice(0, 4)}`}
-                            </SelectItem>
-                          ))}
+                          {audioOutputDevicesRef.current
+                            .filter((device) => device.deviceId !== '')
+                            .map((device) => (
+                              <SelectItem key={device.deviceId} value={device.deviceId}>
+                                {device.label || `Speaker ${device.deviceId.slice(0, 4)}`}
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                       <AudioTest audioDeviceId={field.value || ''} />
