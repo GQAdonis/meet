@@ -37,6 +37,7 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
   const audioOutputDevicesRef = React.useRef<MediaDeviceInfo[]>([])
   const videoPreviewRef = React.useRef<MediaStream | null>(null)
   const videoRef = React.useRef<HTMLVideoElement>(null)
+  const [isLoading, setIsLoading] = React.useState(true)
 
   const defaultValuesRef = React.useRef<PreJoinFormValues>({
     displayName: "",
@@ -55,6 +56,7 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
   React.useEffect(() => {
     const getDevices = async () => {
       if (typeof window === 'undefined') return;
+      setIsLoading(true);
       
       try {
         const devices = await navigator.mediaDevices.enumerateDevices()
@@ -85,6 +87,8 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
         if (videoDevicesRef.current.length > 0 && defaultValuesRef.current.videoDeviceId) {
           await updateVideoPreview(defaultValuesRef.current.videoDeviceId)
         }
+        
+        setIsLoading(false)
       } catch (error) {
         console.error("Error accessing media devices:", error)
         setVideoError(error instanceof Error ? error.message : "Failed to access media devices")
@@ -187,6 +191,22 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
     resolver: zodResolver(preJoinSchema),
     defaultValues: defaultValuesRef.current,
   })
+
+  if (isLoading) {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader>
+          <CardTitle>Join Meeting</CardTitle>
+          <CardDescription>Loading devices...</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card className="w-full max-w-md mx-auto">
