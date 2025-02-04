@@ -50,7 +50,9 @@ export function RoomView({ roomName }: { roomName: string }) {
     >
       <div className="h-screen w-screen flex">
         <div className="flex-grow relative">
-          <VideoConference />
+          <VideoConference
+            className="h-full w-full"
+          />
           <CustomControlBar onChatToggle={() => setIsChatOpen(!isChatOpen)} />
         </div>
         {isChatOpen && <ChatSidebar />}
