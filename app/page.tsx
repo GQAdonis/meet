@@ -103,15 +103,6 @@ export default function Home() {
               <div className="mt-8 mb-12">
                 <RoomCreator />
               </div>
-
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button size="lg" variant="default">
-                  Learn More
-                </Button>
-                <Button size="lg" variant="outline">
-                  View Features
-                </Button>
-              </div>
             </div>
           </div>
         </section>

@@ -8,9 +8,10 @@ import { useRouter } from "next/navigation"
 
 interface CustomControlBarProps {
   onChatToggle: () => void
+  hasUnreadMessages?: boolean
 }
 
-export function CustomControlBar({ onChatToggle }: CustomControlBarProps) {
+export function CustomControlBar({ onChatToggle, hasUnreadMessages }: CustomControlBarProps) {
   const { room } = useRoom()
   const { localParticipant } = useLocalParticipant()
   const router = useRouter()
@@ -31,13 +32,13 @@ export function CustomControlBar({ onChatToggle }: CustomControlBarProps) {
   }
 
   return (
-    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 p-3 flex items-center space-x-4 rounded-full bg-background/80 dark:bg-background/70 backdrop-blur-sm border border-border/50 shadow-lg">
+    <div className="fixed md:absolute bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 p-2 md:p-3 flex items-center space-x-2 md:space-x-4 rounded-full bg-background/80 dark:bg-background/70 backdrop-blur-sm border border-border/50 shadow-lg">
       <div className="flex items-center space-x-2">
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={toggleAudio}
-          className="hover:bg-muted/50"
+          className="hover:bg-muted/50 h-10 w-10 md:h-11 md:w-11"
         >
           {localParticipant?.isMicrophoneEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
         </Button>
@@ -45,7 +46,7 @@ export function CustomControlBar({ onChatToggle }: CustomControlBarProps) {
           variant="ghost" 
           size="icon" 
           onClick={toggleVideo}
-          className="hover:bg-muted/50"
+          className="hover:bg-muted/50 h-10 w-10 md:h-11 md:w-11"
         >
           {localParticipant?.isCameraEnabled ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
         </Button>
@@ -53,9 +54,14 @@ export function CustomControlBar({ onChatToggle }: CustomControlBarProps) {
           variant="ghost" 
           size="icon" 
           onClick={onChatToggle}
-          className="hover:bg-muted/50"
+          className="hover:bg-muted/50 h-10 w-10 md:h-11 md:w-11"
         >
-          <MessageSquare className="w-4 h-4" />
+          <div className="relative">
+            <MessageSquare className="w-4 h-4" />
+            {hasUnreadMessages && (
+              <span className="absolute -top-1 -right-1 bg-primary w-2 h-2 rounded-full" />
+            )}
+          </div>
         </Button>
       </div>
       <div className="w-px h-6 bg-border/50" />
