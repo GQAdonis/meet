@@ -1,201 +1,160 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import React, { Suspense, useState } from 'react';
-import { encodePassphrase, generateRoomId, randomString } from '@/lib/client-utils';
-import styles from '../styles/Home.module.css';
+import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { Card } from "@/components/ui/card"
+import { Camera, MessageSquare, Users, Video, Shield } from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
+import { RoomCreator } from "@/components/meeting/room-creator"
 
-function Tabs(props: React.PropsWithChildren<{}>) {
-  const searchParams = useSearchParams();
-  const tabIndex = searchParams?.get('tab') === 'custom' ? 1 : 0;
-
-  const router = useRouter();
-  function onTabSelected(index: number) {
-    const tab = index === 1 ? 'custom' : 'demo';
-    router.push(`/?tab=${tab}`);
-  }
-
-  let tabs = React.Children.map(props.children, (child, index) => {
-    return (
-      <button
-        className="lk-button"
-        onClick={() => {
-          if (onTabSelected) {
-            onTabSelected(index);
-          }
-        }}
-        aria-pressed={tabIndex === index}
-      >
-        {/* @ts-ignore */}
-        {child?.props.label}
-      </button>
-    );
-  });
-
+export default function Home() {
   return (
-    <div className={styles.tabContainer}>
-      <div className={styles.tabSelect}>{tabs}</div>
-      {/* @ts-ignore */}
-      {props.children[tabIndex]}
-    </div>
-  );
-}
-
-function DemoMeetingTab(props: { label: string }) {
-  const router = useRouter();
-  const [e2ee, setE2ee] = useState(false);
-  const [sharedPassphrase, setSharedPassphrase] = useState(randomString(64));
-  const startMeeting = () => {
-    if (e2ee) {
-      router.push(`/rooms/${generateRoomId()}#${encodePassphrase(sharedPassphrase)}`);
-    } else {
-      router.push(`/rooms/${generateRoomId()}`);
-    }
-  };
-  return (
-    <div className={styles.tabContent}>
-      <p style={{ margin: 0 }}>Try LiveKit Meet for free with our live demo project.</p>
-      <button style={{ marginTop: '1rem' }} className="lk-button" onClick={startMeeting}>
-        Start Meeting
-      </button>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <div style={{ display: 'flex', flexDirection: 'row', gap: '1rem' }}>
-          <input
-            id="use-e2ee"
-            type="checkbox"
-            checked={e2ee}
-            onChange={(ev) => setE2ee(ev.target.checked)}
-          ></input>
-          <label htmlFor="use-e2ee">Enable end-to-end encryption</label>
-        </div>
-        {e2ee && (
-          <div style={{ display: 'flex', flexDirection: 'row', gap: '1rem' }}>
-            <label htmlFor="passphrase">Passphrase</label>
-            <input
-              id="passphrase"
-              type="password"
-              value={sharedPassphrase}
-              onChange={(ev) => setSharedPassphrase(ev.target.value)}
+    <div className="min-h-screen">
+      <header className="border-b bg-background sticky top-0 z-50">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Image
+              src="/images/skytok-long.png"
+              alt="SkyTok Meet Logo"
+              width={120}
+              height={30}
+              style={{ height: '2rem', width: 'auto' }}
             />
+            <span className="font-semibold text-xl text-foreground">Meet</span>
           </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function CustomConnectionTab(props: { label: string }) {
-  const router = useRouter();
-
-  const [e2ee, setE2ee] = useState(false);
-  const [sharedPassphrase, setSharedPassphrase] = useState(randomString(64));
-
-  const onSubmit: React.FormEventHandler<HTMLFormElement> = (event) => {
-    event.preventDefault();
-    const formData = new FormData(event.target as HTMLFormElement);
-    const serverUrl = formData.get('serverUrl');
-    const token = formData.get('token');
-    if (e2ee) {
-      router.push(
-        `/custom/?liveKitUrl=${serverUrl}&token=${token}#${encodePassphrase(sharedPassphrase)}`,
-      );
-    } else {
-      router.push(`/custom/?liveKitUrl=${serverUrl}&token=${token}`);
-    }
-  };
-  return (
-    <form className={styles.tabContent} onSubmit={onSubmit}>
-      <p style={{ marginTop: 0 }}>
-        Connect LiveKit Meet with a custom server using LiveKit Cloud or LiveKit Server.
-      </p>
-      <input
-        id="serverUrl"
-        name="serverUrl"
-        type="url"
-        placeholder="LiveKit Server URL: wss://*.livekit.cloud"
-        required
-      />
-      <textarea
-        id="token"
-        name="token"
-        placeholder="Token"
-        required
-        rows={5}
-        style={{ padding: '1px 2px', fontSize: 'inherit', lineHeight: 'inherit' }}
-      />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <div style={{ display: 'flex', flexDirection: 'row', gap: '1rem' }}>
-          <input
-            id="use-e2ee"
-            type="checkbox"
-            checked={e2ee}
-            onChange={(ev) => setE2ee(ev.target.checked)}
-          ></input>
-          <label htmlFor="use-e2ee">Enable end-to-end encryption</label>
+          <div className="flex items-center gap-4">
+            <nav className="hidden md:flex gap-6">
+              <Link href="#features" className="text-sm font-medium text-foreground hover:text-primary">
+                Features
+              </Link>
+              <Link href="#about" className="text-sm font-medium text-foreground hover:text-primary">
+                About
+              </Link>
+              <Link href="#contact" className="text-sm font-medium text-foreground hover:text-primary">
+                Contact
+              </Link>
+            </nav>
+            <ThemeToggle />
+            <Button variant="default">
+              Sign In with BlueSky
+            </Button>
+          </div>
         </div>
-        {e2ee && (
-          <div style={{ display: 'flex', flexDirection: 'row', gap: '1rem' }}>
-            <label htmlFor="passphrase">Passphrase</label>
-            <input
-              id="passphrase"
-              type="password"
-              value={sharedPassphrase}
-              onChange={(ev) => setSharedPassphrase(ev.target.value)}
+      </header>
+
+      <main className="bg-background">
+        <section className="relative min-h-[800px] flex items-center">
+          {/* Background Image */}
+          <div className="absolute inset-0 z-0">
+            <div 
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+              style={{
+                backgroundImage: 'url("https://images.unsplash.com/photo-1505373877841-8d25f7d46678?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2000&q=80")'
+              }}
             />
+            <div className="absolute inset-0 bg-black/60" />
           </div>
-        )}
-      </div>
 
-      <hr
-        style={{ width: '100%', borderColor: 'rgba(255, 255, 255, 0.15)', marginBlock: '1rem' }}
-      />
-      <button
-        style={{ paddingInline: '1.25rem', width: '100%' }}
-        className="lk-button"
-        type="submit"
-      >
-        Connect
-      </button>
-    </form>
-  );
-}
+          {/* Content */}
+          <div className="relative z-10 container mx-auto px-4 py-20 md:py-32">
+            <div className="max-w-6xl mx-auto text-center text-white">
+              <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
+                Video Conferencing for the <span className="text-primary">Decentralized Web</span>
+              </h1>
+              <p className="text-xl text-white/80 max-w-2xl mx-auto mb-10">
+                Join the future of communication with SkyTok Meet. Powered by the AT Protocol for secure, decentralized
+                video conferencing.
+              </p>
 
-export default function Page() {
-  return (
-    <>
-      <main className={styles.main} data-lk-theme="default">
-        <div className="header">
-          <img src="/images/livekit-meet-home.svg" alt="LiveKit Meet" width="360" height="45" />
-          <h2>
-            Open source video conferencing app built on{' '}
-            <a href="https://github.com/livekit/components-js?ref=meet" rel="noopener">
-              LiveKit&nbsp;Components
-            </a>
-            ,{' '}
-            <a href="https://livekit.io/cloud?ref=meet" rel="noopener">
-              LiveKit&nbsp;Cloud
-            </a>{' '}
-            and Next.js.
-          </h2>
-        </div>
-        <Suspense fallback="Loading">
-          <Tabs>
-            <DemoMeetingTab label="Demo" />
-            <CustomConnectionTab label="Custom" />
-          </Tabs>
-        </Suspense>
+              <div className="mt-8 mb-12">
+                <RoomCreator />
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button size="lg" variant="default">
+                  Learn More
+                </Button>
+                <Button size="lg" variant="outline">
+                  View Features
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="features" className="py-20 bg-muted">
+          <div className="container mx-auto px-4">
+            <h2 className="text-3xl font-bold text-center mb-12 text-foreground">Why Choose SkyTok Meet?</h2>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <Card className="p-6">
+                <Video className="h-12 w-12 text-primary mb-4" />
+                <h3 className="text-xl font-semibold mb-2">HD Video Conferencing</h3>
+                <p className="text-muted-foreground">
+                  Crystal clear video and audio quality for seamless communication.
+                </p>
+              </Card>
+              <Card className="p-6">
+                <Shield className="h-12 w-12 text-secondary mb-4" />
+                <h3 className="text-xl font-semibold mb-2">AT Protocol Security</h3>
+                <p className="text-muted-foreground">Decentralized authentication and end-to-end encryption.</p>
+              </Card>
+              <Card className="p-6">
+                <Camera className="h-12 w-12 text-accent mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Meeting Recording</h3>
+                <p className="text-muted-foreground">Record and save your meetings for future reference.</p>
+              </Card>
+              <Card className="p-6">
+                <Users className="h-12 w-12 text-primary mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Virtual Rooms</h3>
+                <p className="text-muted-foreground">Create dedicated spaces for teams and communities.</p>
+              </Card>
+              <Card className="p-6">
+                <MessageSquare className="h-12 w-12 text-secondary mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Built-in Chat</h3>
+                <p className="text-muted-foreground">Real-time messaging powered by the AT Protocol.</p>
+              </Card>
+            </div>
+          </div>
+        </section>
+
+        <section className="py-20 bg-background">
+          <div className="container mx-auto px-4 text-center">
+            <h2 className="text-3xl font-bold mb-12 text-foreground">Ready to Get Started?</h2>
+            <Button size="lg" variant="default">
+              Join SkyTok Meet Now
+            </Button>
+          </div>
+        </section>
       </main>
-      <footer data-lk-theme="default">
-        Hosted on{' '}
-        <a href="https://livekit.io/cloud?ref=meet" rel="noopener">
-          LiveKit Cloud
-        </a>
-        . Source code on{' '}
-        <a href="https://github.com/livekit/meet?ref=meet" rel="noopener">
-          GitHub
-        </a>
-        .
+
+      <footer className="border-t py-8 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Image
+                src="/images/skytok-long.png"
+                alt="SkyTok Meet Logo"
+              width={80}
+              height={20}
+              style={{ height: '1.5rem', width: 'auto' }}
+              />
+              <span className="text-sm text-muted-foreground">© 2024 SkyTok Meet. All rights reserved.</span>
+            </div>
+            <nav className="flex gap-6">
+              <Link href="#" className="text-sm text-muted-foreground hover:text-primary">
+                Privacy
+              </Link>
+              <Link href="#" className="text-sm text-muted-foreground hover:text-primary">
+                Terms
+              </Link>
+              <Link href="#" className="text-sm text-muted-foreground hover:text-primary">
+                Contact
+              </Link>
+            </nav>
+          </div>
+        </div>
       </footer>
-    </>
-  );
+    </div>
+  )
 }

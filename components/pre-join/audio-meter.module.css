@@ -1,0 +1,18 @@
+.audioLevelBar {
+  height: 100%;
+  transition: width 100ms ease-in-out;
+  width: var(--audio-level);
+  --audio-level: 0%;
+}
+
+.audioLevelBarGreen {
+  background-color: rgb(34 197 94); /* bg-green-500 */
+}
+
+.audioLevelBarYellow {
+  background-color: rgb(234 179 8); /* bg-yellow-500 */
+}
+
+.audioLevelBarRed {
+  background-color: rgb(239 68 68); /* bg-red-500 */
+}

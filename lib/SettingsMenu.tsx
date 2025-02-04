@@ -9,7 +9,10 @@ import {
   useIsRecording,
 } from '@livekit/components-react';
 import { useKrispNoiseFilter } from '@livekit/components-react/krisp';
-import styles from '../styles/SettingsMenu.module.css';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 /**
  * @alpha
@@ -83,100 +86,126 @@ export function SettingsMenu(props: SettingsMenuProps) {
   };
 
   return (
-    <div className="settings-menu" style={{ width: '100%' }} {...props}>
-      <div className={styles.tabs}>
-        {tabs.map(
-          (tab) =>
-            settings[tab] && (
-              <button
-                className={`${styles.tab} lk-button`}
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                aria-pressed={tab === activeTab}
-              >
-                {
-                  // @ts-ignore
-                  settings[tab].label
-                }
-              </button>
-            ),
-        )}
-      </div>
-      <div className="tab-content">
-        {activeTab === 'media' && (
-          <>
-            {settings.media && settings.media.camera && (
+    <Card className="w-full max-w-2xl mx-auto shadow-lg" {...props}>
+      <CardHeader>
+        <CardTitle className="text-2xl font-bold">Settings</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Tabs 
+          value={activeTab} 
+          onValueChange={(value: string) => {
+            if (value === "media" || value === "effects" || value === "recording") {
+              setActiveTab(value);
+            }
+          }} 
+          className="w-full"
+        >
+          <TabsList className="grid w-full grid-cols-3 gap-4">
+            {tabs.map(
+              (tab) =>
+                settings[tab] && (
+                  <TabsTrigger
+                    key={tab}
+                    value={tab}
+                    className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                  >
+                    {
+                      // @ts-ignore
+                      settings[tab].label
+                    }
+                  </TabsTrigger>
+                ),
+            )}
+          </TabsList>
+          <div className="mt-6 space-y-6">
+            {activeTab === 'media' && (
               <>
-                <h3>Camera</h3>
-                <section className="lk-button-group">
-                  <TrackToggle source={Track.Source.Camera}>Camera</TrackToggle>
-                  <div className="lk-button-group-menu">
-                    <MediaDeviceMenu kind="videoinput" />
-                  </div>
+                {settings.media && settings.media.camera && (
+                  <>
+                    <h3>Camera</h3>
+                    <div className="flex items-center justify-between gap-4">
+                      <TrackToggle source={Track.Source.Camera}>
+                        <Button variant="outline" className="w-32">Camera</Button>
+                      </TrackToggle>
+                      <div className="flex-1">
+                        <MediaDeviceMenu kind="videoinput" />
+                      </div>
+                    </div>
+                  </>
+                )}
+                {settings.media && settings.media.microphone && (
+                  <>
+                    <h3>Microphone</h3>
+                    <div className="flex items-center justify-between gap-4">
+                      <TrackToggle source={Track.Source.Microphone}>
+                        <Button variant="outline" className="w-32">Microphone</Button>
+                      </TrackToggle>
+                      <div className="flex-1">
+                        <MediaDeviceMenu kind="audioinput" />
+                      </div>
+                    </div>
+                  </>
+                )}
+                {settings.media && settings.media.speaker && (
+                  <>
+                    <h3>Speaker & Headphones</h3>
+                    <div className="flex items-center justify-between gap-4">
+                      <Button variant="outline" className="w-32">Audio Output</Button>
+                      <div className="flex-1">
+                        <MediaDeviceMenu kind="audiooutput" />
+                      </div>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+            {activeTab === 'effects' && (
+              <>
+                <h3>Audio</h3>
+                <div className="flex items-center justify-between py-4">
+                  <label htmlFor="noise-filter" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Enhanced Noise Cancellation
+                  </label>
+                  <Switch
+                    id="noise-filter"
+                    checked={isNoiseFilterEnabled}
+                    onCheckedChange={setNoiseFilterEnabled}
+                    disabled={isNoiseFilterPending}
+                  />
+                </div>
+              </>
+            )}
+            {activeTab === 'recording' && (
+              <>
+                <h3>Record Meeting</h3>
+                <section>
+                  <p>
+                    {isRecording
+                      ? 'Meeting is currently being recorded'
+                      : 'No active recordings for this meeting'}
+                  </p>
+                  <Button 
+                    variant={isRecording ? "destructive" : "default"}
+                    disabled={processingRecRequest} 
+                    onClick={() => toggleRoomRecording()}
+                    className="mt-4"
+                  >
+                    {isRecording ? 'Stop' : 'Start'} Recording
+                  </Button>
                 </section>
               </>
             )}
-            {settings.media && settings.media.microphone && (
-              <>
-                <h3>Microphone</h3>
-                <section className="lk-button-group">
-                  <TrackToggle source={Track.Source.Microphone}>Microphone</TrackToggle>
-                  <div className="lk-button-group-menu">
-                    <MediaDeviceMenu kind="audioinput" />
-                  </div>
-                </section>
-              </>
-            )}
-            {settings.media && settings.media.speaker && (
-              <>
-                <h3>Speaker & Headphones</h3>
-                <section className="lk-button-group">
-                  <span className="lk-button">Audio Output</span>
-                  <div className="lk-button-group-menu">
-                    <MediaDeviceMenu kind="audiooutput"></MediaDeviceMenu>
-                  </div>
-                </section>
-              </>
-            )}
-          </>
-        )}
-        {activeTab === 'effects' && (
-          <>
-            <h3>Audio</h3>
-            <section>
-              <label htmlFor="noise-filter"> Enhanced Noise Cancellation</label>
-              <input
-                type="checkbox"
-                id="noise-filter"
-                onChange={(ev) => setNoiseFilterEnabled(ev.target.checked)}
-                checked={isNoiseFilterEnabled}
-                disabled={isNoiseFilterPending}
-              ></input>
-            </section>
-          </>
-        )}
-        {activeTab === 'recording' && (
-          <>
-            <h3>Record Meeting</h3>
-            <section>
-              <p>
-                {isRecording
-                  ? 'Meeting is currently being recorded'
-                  : 'No active recordings for this meeting'}
-              </p>
-              <button disabled={processingRecRequest} onClick={() => toggleRoomRecording()}>
-                {isRecording ? 'Stop' : 'Start'} Recording
-              </button>
-            </section>
-          </>
-        )}
-      </div>
-      <button
-        className={`lk-button ${styles.settingsCloseButton}`}
-        onClick={() => layoutContext?.widget.dispatch?.({ msg: 'toggle_settings' })}
-      >
-        Close
-      </button>
-    </div>
+          </div>
+        </Tabs>
+        <div className="flex justify-end mt-6 px-6 pb-6">
+          <Button
+            variant="outline"
+            onClick={() => layoutContext?.widget.dispatch?.({ msg: 'toggle_settings' })}
+          >
+            Close
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
