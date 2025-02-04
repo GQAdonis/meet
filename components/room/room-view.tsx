@@ -3,15 +3,16 @@
 import React from "react"
 import { useRoom } from "@/hooks/use-room"
 import { VideoConference, GridLayout, useTracks } from "@livekit/components-react"
+import { Track } from 'livekit-client'
 
 import { ChatSidebar } from "@/components/room/chat-sidebar"
 import { CustomParticipantTile } from "./custom-participant-tile"
-import type { ConnectionDetails } from "@/lib/types"
 import { LiveKitProvider } from "@/components/providers/livekit-provider"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { cn } from "@/lib/utils"
 import { CustomControlBar } from "./custom-control-bar"
+import { ResetPreferences } from "./reset-preferences"
 
 export function RoomView({ roomName }: { roomName: string }) {
   const { localUser, connectionDetails } = useRoom()
@@ -20,18 +21,17 @@ export function RoomView({ roomName }: { roomName: string }) {
   const chatSidebarRef = React.useRef<{ startPrivateChat: (participantIdentity: string) => void } | null>(null)
   const isMobile = useMediaQuery("(max-width: 768px)")
 
-  // If we don't have the required data, show nothing
-  if (!localUser || !connectionDetails) {
-    return null
-  }
-
   const toggleChat = React.useCallback(() => {
     setIsChatOpen(prev => !prev)
   }, [])
 
   if (!localUser || !connectionDetails) return null
 
-  const tracks = useTracks();
+  const tracks = useTracks([
+    { source: Track.Source.Camera, withPlaceholder: true },
+    { source: Track.Source.Microphone, withPlaceholder: true },
+    { source: Track.Source.ScreenShare, withPlaceholder: true },
+  ]);
   const handleStartPrivateChat = (participantIdentity: string) => {
     setIsChatOpen(true);
     if (chatSidebarRef.current?.startPrivateChat) {
@@ -47,11 +47,16 @@ export function RoomView({ roomName }: { roomName: string }) {
       audio={localUser.audioEnabled}
       video={localUser.videoEnabled}
     >
-      <div className="h-screen w-screen flex overflow-hidden">
+      <div className="h-screen w-screen flex overflow-hidden relative">
+        <ResetPreferences />
         {/* For desktop, render chat sidebar inline */}
         {!isMobile && isChatOpen && (
           <div className="w-80 border-l border-border/50 bg-background/80 backdrop-blur-sm">
-            <ChatSidebar />
+            <ChatSidebar
+              ref={chatSidebarRef}
+              onStartPrivateChat={handleStartPrivateChat}
+              onUnreadMessages={setHasUnreadMessages}
+            />
           </div>
         )}
         {/* For mobile, render chat sidebar as a sheet */}

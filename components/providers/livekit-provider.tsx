@@ -19,6 +19,11 @@ export function LiveKitProvider({
   video = false,
   audio = false,
 }: LiveKitProviderProps) {
+  const onError = (error: Error) => {
+    console.error('LiveKit connection error:', error);
+    // Implement your error reporting here
+  };
+
   return (
     <LiveKitRoom
       token={token}
@@ -27,6 +32,13 @@ export function LiveKitProvider({
       video={video}
       audio={audio}
       data-lk-theme="default"
+      // Add connection handling
+      onError={onError}
+      // Enable automatic reconnection
+      connectOptions={{
+        autoSubscribe: true,
+        maxRetries: 3
+      }}
     >
       {children}
     </LiveKitRoom>

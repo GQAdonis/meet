@@ -2,7 +2,8 @@
 
 import * as React from "react"
 import { Button } from "@/components/ui/button"
-import { Volume2, VolumeX } from "lucide-react"
+import { Volume2, VolumeX, Volume1 } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface AudioTestProps {
   audioDeviceId: string
@@ -21,8 +22,13 @@ export function AudioTest({ audioDeviceId }: AudioTestProps) {
     audioRef.current = new Audio("/test-audio.mp3")
     audioRef.current.loop = true
 
+    // Add ended event listener to reset state if audio ends
+    const handleEnded = () => setIsPlaying(false)
+    audioRef.current.addEventListener('ended', handleEnded)
+
     return () => {
       if (audioRef.current) {
+        audioRef.current.removeEventListener('ended', handleEnded)
         audioRef.current.pause()
         audioRef.current = null
       }
@@ -35,7 +41,8 @@ export function AudioTest({ audioDeviceId }: AudioTestProps) {
     }
   }, [audioDeviceId])
 
-  const toggleAudio = () => {
+  const toggleAudio = (e: React.MouseEvent) => {
+    e.preventDefault()  // Prevent form submission
     if (!audioRef.current) return
 
     if (isPlaying) {
@@ -47,8 +54,21 @@ export function AudioTest({ audioDeviceId }: AudioTestProps) {
   }
 
   return (
-    <Button variant="outline" size="icon" onClick={toggleAudio} className="h-8 w-8">
-      {isPlaying ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+    <Button 
+      type="button" 
+      variant="outline" 
+      size="icon" 
+      onClick={toggleAudio} 
+      className={cn(
+        "h-8 w-8 transition-colors",
+        isPlaying && "bg-primary/10 hover:bg-primary/20"
+      )}
+    >
+      {isPlaying ? (
+        <Volume1 className="h-4 w-4 animate-pulse text-primary" />
+      ) : (
+        <Volume2 className="h-4 w-4" />
+      )}
     </Button>
   )
 }

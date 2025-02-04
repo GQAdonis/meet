@@ -38,7 +38,7 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
   const [isLoading, setIsLoading] = React.useState(true)
 
   const { session } = useAuth()
-  const { setLocalUser, joinRoom } = useRoom()
+  const { setLocalUser, joinRoom, lastUsedDevices, setLastUsedDevices, skipPreJoin, setSkipPreJoin } = useRoom()
   const [videoError, setVideoError] = React.useState<string | null>(null)
 
   const form = useForm<PreJoinFormValues>({
@@ -58,16 +58,69 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
     audioOutputDeviceId: "",
   })
 
+  const startVideoPreview = async (deviceId?: string) => {
+    try {
+      if (videoPreviewRef.current) {
+        videoPreviewRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+      }
+
+      const constraints = deviceId 
+        ? { video: { deviceId: { exact: deviceId } } }
+        : { video: true };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      videoPreviewRef.current = stream;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(error => {
+          console.error('Error playing video:', error);
+          setVideoError('Failed to start video preview. Please check your camera permissions.');
+        });
+      }
+    } catch (error) {
+      console.error('Error starting video preview:', error);
+      setVideoError('Failed to access camera. Please check your permissions and camera connection.');
+    }
+  };
+
   React.useEffect(() => {
     const getDevices = async () => {
       if (typeof window === 'undefined') return;
       setIsLoading(true);
+      setVideoError(null);
+
+      // If skipPreJoin is true and we have lastUsedDevices, auto-join the room
+      if (skipPreJoin && lastUsedDevices) {
+        const localUserChoices: LocalUserChoices = {
+          username: session?.handle || 'Anonymous',
+          videoEnabled: true,
+          audioEnabled: true,
+          videoDeviceId: lastUsedDevices.videoDeviceId || '',
+          audioDeviceId: lastUsedDevices.audioDeviceId || '',
+        }
+        setLocalUser(localUserChoices)
+        joinRoom()
+        return;
+      }
       
       try {
+        // Start with video preview first
+        await startVideoPreview();
+
         const devices = await navigator.mediaDevices.enumerateDevices();
+        console.log('All detected devices:', devices);
+
         videoDevicesRef.current = devices.filter((device: MediaDeviceInfo) => device.kind === "videoinput");
         audioDevicesRef.current = devices.filter((device: MediaDeviceInfo) => device.kind === "audioinput");
         audioOutputDevicesRef.current = devices.filter((device: MediaDeviceInfo) => device.kind === "audiooutput");
+
+        console.log('Filtered video devices:', videoDevicesRef.current);
+
+        if (videoDevicesRef.current.length === 0) {
+          console.warn('No video devices found');
+          setVideoError('No cameras detected. Please check if your camera is properly connected.');
+        }
 
         // Set default values for device selections
         defaultValuesRef.current = {
@@ -103,6 +156,15 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
 
   const handleSubmit = async (values: PreJoinFormValues) => {
     try {
+      // Save the last used devices
+      setLastUsedDevices({
+        videoDeviceId: values.videoDeviceId || '',
+        audioDeviceId: values.audioDeviceId || '',
+      });
+
+      // Enable skip pre-join for future visits
+      setSkipPreJoin(true);
+
       // Set local user preferences for media devices
       const localUserChoices: LocalUserChoices = {
         username: values.displayName,
@@ -133,39 +195,7 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
   }
 
   const updateVideoPreview = async (deviceId: string) => {
-    if (videoPreviewRef.current) {
-      videoPreviewRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop())
-    }
-
-    try {
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        video: { deviceId: { exact: deviceId } },
-      })
-      videoPreviewRef.current = newStream
-      if (videoRef.current) {
-        videoRef.current.srcObject = newStream
-      }
-    } catch (error) {
-      console.error("Error updating video preview:", error)
-
-      if (error instanceof OverconstrainedError) {
-        // If the exact deviceId constraint fails, try without it
-        try {
-          const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true })
-          videoPreviewRef.current = fallbackStream
-          if (videoRef.current) {
-            videoRef.current.srcObject = fallbackStream
-          }
-          setVideoError("Unable to use the selected camera. Using default camera instead.")
-        } catch (fallbackError) {
-          setVideoError("Failed to access any camera. Please check your camera permissions.")
-        }
-      } else {
-        setVideoError(
-          "Failed to access the selected camera. Please ensure you've granted the necessary permissions and try again."
-        )
-      }
-    }
+    await startVideoPreview(deviceId);
   }
 
   if (isLoading) {
@@ -200,7 +230,20 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
                   <p>{videoError}</p>
                 </div>
               ) : (
-                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  playsInline 
+                  muted 
+                  className="w-full h-full object-cover"
+                  onLoadedMetadata={(e) => {
+                    const video = e.target as HTMLVideoElement
+                    video.play().catch(error => {
+                      console.error('Error playing video after metadata loaded:', error)
+                      setVideoError('Failed to start video preview. Please check your camera permissions.')
+                    })
+                  }}
+                />
               )}
             </div>
 
