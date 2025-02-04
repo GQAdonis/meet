@@ -1,0 +1,6 @@
+.hero-background {
+  background-image: url("https://images.unsplash.com/photo-1505373877841-8d25f7d46678?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}

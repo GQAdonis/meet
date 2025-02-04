@@ -14,36 +14,16 @@ import { cn } from "@/lib/utils"
 import { CustomControlBar } from "./custom-control-bar"
 
 export function RoomView({ roomName }: { roomName: string }) {
-  const { localUser } = useRoom()
+  const { localUser, connectionDetails } = useRoom()
   const [isChatOpen, setIsChatOpen] = React.useState(false)
   const [hasUnreadMessages, setHasUnreadMessages] = React.useState(false)
   const chatSidebarRef = React.useRef<{ startPrivateChat: (participantIdentity: string) => void } | null>(null)
   const isMobile = useMediaQuery("(max-width: 768px)")
-  const [connectionDetails, setConnectionDetails] = React.useState<ConnectionDetails | null>(null)
 
-  React.useEffect(() => {
-    const fetchConnectionDetails = async () => {
-      try {
-        const url = new URL("/api/connection-details", window.location.origin)
-        url.searchParams.append("roomName", roomName)
-        url.searchParams.append("participantName", localUser?.username || "Anonymous")
-
-        const response = await fetch(url.toString())
-        if (!response.ok) {
-          throw new Error("Failed to fetch connection details")
-        }
-        const details: ConnectionDetails = await response.json()
-        setConnectionDetails(details)
-      } catch (error) {
-        console.error("Error fetching connection details:", error)
-        // Handle error (e.g., show error message to user)
-      }
-    }
-
-    if (localUser) {
-      fetchConnectionDetails()
-    }
-  }, [roomName, localUser])
+  // If we don't have the required data, show nothing
+  if (!localUser || !connectionDetails) {
+    return null
+  }
 
   const toggleChat = React.useCallback(() => {
     setIsChatOpen(prev => !prev)

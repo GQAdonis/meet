@@ -37,17 +37,38 @@ export function RoomCreator() {
   const [sharedPassphrase, setSharedPassphrase] = React.useState(randomString(64))
   const [validationError, setValidationError] = React.useState("")
 
-  const startMeeting = () => {
+  const startMeeting = async () => {
     try {
-      console.log('Starting meeting with room name:', roomName);
+      // 1. Validate room name format
       roomSchema.parse({ roomName })
-      const targetUrl = e2ee ? `/rooms/${roomName}#${encodePassphrase(sharedPassphrase)}` : `/rooms/${roomName}`;
-      console.log('Navigating to:', targetUrl);
+
+      // 2. Create room on server
+      const response = await fetch('/api/rooms/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          roomName,
+          e2ee,
+          sharedPassphrase: e2ee ? sharedPassphrase : undefined,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.text()
+        throw new Error(error)
+      }
+
+      // 3. Navigate to room
+      const targetUrl = e2ee ? `/rooms/${roomName}#${encodePassphrase(sharedPassphrase)}` : `/rooms/${roomName}`
       router.push(targetUrl)
     } catch (error) {
-      console.error('Error starting meeting:', error);
+      console.error('Error starting meeting:', error)
       if (error instanceof z.ZodError) {
         setValidationError("Room name must contain only lowercase letters, numbers, and hyphens")
+      } else {
+        setValidationError(error instanceof Error ? error.message : "Failed to create room")
       }
     }
   }

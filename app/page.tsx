@@ -10,6 +10,7 @@ import { RoomCreator } from "@/components/meeting/room-creator"
 import { useAuth } from "@/hooks/use-auth"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import '@/styles/home.css'
 
 export default function Home() {
   const { isAuthenticated, logout, profile } = useAuth()
@@ -24,7 +25,7 @@ export default function Home() {
               alt="SkyTok Meet Logo"
               width={120}
               height={30}
-              style={{ height: '2rem', width: 'auto' }}
+              className="h-8 w-auto"
             />
             <span className="font-semibold text-xl text-foreground">Meet</span>
           </div>
@@ -65,7 +66,7 @@ export default function Home() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
-            {!isAuthenticated && (
+            {!isAuthenticated() && (
               <Link href="/login">
                 <Button variant="default">
                   Sign In with BlueSky
@@ -81,10 +82,7 @@ export default function Home() {
           {/* Background Image */}
           <div className="absolute inset-0 z-0">
             <div 
-              className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-              style={{
-                backgroundImage: 'url("https://images.unsplash.com/photo-1505373877841-8d25f7d46678?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2000&q=80")'
-              }}
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat hero-background"
             />
             <div className="absolute inset-0 bg-black/60" />
           </div>
@@ -163,9 +161,9 @@ export default function Home() {
                 alt="SkyTok Meet Logo"
               width={80}
               height={20}
-              style={{ height: '1.5rem', width: 'auto' }}
+              className="h-6 w-auto"
               />
-              <span className="text-sm text-muted-foreground">© 2024 SkyTok Meet. All rights reserved.</span>
+              <span className="text-sm text-muted-foreground"> 2024 SkyTok Meet. All rights reserved.</span>
             </div>
             <nav className="flex gap-6">
               <Link href="#" className="text-sm text-muted-foreground hover:text-primary">

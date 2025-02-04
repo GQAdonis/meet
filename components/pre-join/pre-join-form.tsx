@@ -15,8 +15,6 @@ import type { LocalUserChoices } from "@livekit/components-react"
 import { Camera, Mic, Monitor } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useRoom } from "@/hooks/use-room"
-import { useRouter } from "next/navigation"
-import type { ConnectionDetails } from "@/lib/types"
 
 const preJoinSchema = z.object({
   displayName: z.string().min(2, "Display name must be at least 2 characters"),
@@ -39,6 +37,20 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
   const videoRef = React.useRef<HTMLVideoElement>(null)
   const [isLoading, setIsLoading] = React.useState(true)
 
+  const { session } = useAuth()
+  const { setLocalUser, joinRoom } = useRoom()
+  const [videoError, setVideoError] = React.useState<string | null>(null)
+
+  const form = useForm<PreJoinFormValues>({
+    resolver: zodResolver(preJoinSchema),
+    defaultValues: {
+      displayName: "",
+      videoDeviceId: "",
+      audioDeviceId: "",
+      audioOutputDeviceId: "",
+    },
+  })
+
   const defaultValuesRef = React.useRef<PreJoinFormValues>({
     displayName: "",
     videoDeviceId: "",
@@ -46,29 +58,16 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
     audioOutputDeviceId: "",
   })
 
-  const { session } = useAuth()
-  const { setLocalUser, joinRoom } = useRoom()
-  const [connectionDetails, setConnectionDetails] = React.useState<ConnectionDetails | null>(null)
-  const router = useRouter()
-
-  const [videoError, setVideoError] = React.useState<string | null>(null)
-
   React.useEffect(() => {
     const getDevices = async () => {
       if (typeof window === 'undefined') return;
       setIsLoading(true);
       
       try {
-        const devices = await navigator.mediaDevices.enumerateDevices()
-
-        // Ensure we have valid MediaDeviceInfo objects before filtering
-        const validDevices = devices.filter((device): device is MediaDeviceInfo => 
-          device && typeof device === 'object' && 'kind' in device
-        )
-
-        videoDevicesRef.current = validDevices.filter((device) => device.kind === "videoinput")
-        audioDevicesRef.current = validDevices.filter((device) => device.kind === "audioinput")
-        audioOutputDevicesRef.current = validDevices.filter((device) => device.kind === "audiooutput")
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        videoDevicesRef.current = devices.filter((device: MediaDeviceInfo) => device.kind === "videoinput");
+        audioDevicesRef.current = devices.filter((device: MediaDeviceInfo) => device.kind === "audioinput");
+        audioOutputDevicesRef.current = devices.filter((device: MediaDeviceInfo) => device.kind === "audiooutput");
 
         // Set default values for device selections
         defaultValuesRef.current = {
@@ -76,51 +75,35 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
           videoDeviceId: videoDevicesRef.current[0]?.deviceId ?? "",
           audioDeviceId: audioDevicesRef.current[0]?.deviceId ?? "",
           audioOutputDeviceId: audioOutputDevicesRef.current[0]?.deviceId ?? "",
-        }
+        };
 
         // Update form with default values
         Object.entries(defaultValuesRef.current).forEach(([key, value]) => {
-          form.setValue(key as keyof PreJoinFormValues, value)
-        })
+          form.setValue(key as keyof PreJoinFormValues, value);
+        });
 
         // Start video preview with the first available camera
         if (videoDevicesRef.current.length > 0 && defaultValuesRef.current.videoDeviceId) {
-          await updateVideoPreview(defaultValuesRef.current.videoDeviceId)
+          await updateVideoPreview(defaultValuesRef.current.videoDeviceId);
         }
         
-        setIsLoading(false)
+        setIsLoading(false);
       } catch (error) {
-        console.error("Error accessing media devices:", error)
-        setVideoError(error instanceof Error ? error.message : "Failed to access media devices")
+        console.error("Error accessing media devices:", error);
+        setVideoError(error instanceof Error ? error.message : "Failed to access media devices");
       }
-    }
+    };
 
-    getDevices()
+    getDevices();
 
     return () => {
-      videoPreviewRef.current?.getTracks().forEach((track) => track.stop())
-    }
-  }, [session])
-
-  React.useEffect(() => {
-    //Removed BskyAgent related code
-  }, [])
+      videoPreviewRef.current?.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+    };
+  }, [form, session]);
 
   const handleSubmit = async (values: PreJoinFormValues) => {
     try {
-      const url = new URL("/api/connection-details", window.location.origin)
-      url.searchParams.append("roomName", roomName)
-      url.searchParams.append("participantName", values.displayName)
-      // Add region if you're using region-based routing
-      // url.searchParams.append('region', 'your-region')
-
-      const response = await fetch(url.toString())
-      if (!response.ok) {
-        throw new Error("Failed to fetch connection details")
-      }
-      const details: ConnectionDetails = await response.json()
-      setConnectionDetails(details)
-
+      // Set local user preferences for media devices
       const localUserChoices: LocalUserChoices = {
         username: values.displayName,
         videoEnabled: true,
@@ -129,11 +112,11 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
         audioDeviceId: values.audioDeviceId ?? '',
       }
       setLocalUser(localUserChoices)
+
+      // Mark that we're joining the room
       joinRoom()
-      router.push(`/rooms/${roomName}`)
     } catch (error) {
-      console.error("Error joining room:", error)
-      // Handle error (e.g., show error message to user)
+      console.error('Error preparing media:', error)
     }
   }
 
@@ -151,7 +134,7 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
 
   const updateVideoPreview = async (deviceId: string) => {
     if (videoPreviewRef.current) {
-      videoPreviewRef.current.getTracks().forEach((track) => track.stop())
+      videoPreviewRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop())
     }
 
     try {
@@ -176,32 +159,26 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
           setVideoError("Unable to use the selected camera. Using default camera instead.")
         } catch (fallbackError) {
           setVideoError("Failed to access any camera. Please check your camera permissions.")
-          //onError(fallbackError instanceof Error ? fallbackError : new Error("Failed to access any camera"))
         }
       } else {
         setVideoError(
-          "Failed to access the selected camera. Please ensure you've granted the necessary permissions and try again.",
+          "Failed to access the selected camera. Please ensure you've granted the necessary permissions and try again."
         )
-        //onError(error instanceof Error ? error : new Error("Failed to update video preview"))
       }
     }
   }
-
-  const form = useForm<PreJoinFormValues>({
-    resolver: zodResolver(preJoinSchema),
-    defaultValues: defaultValuesRef.current,
-  })
 
   if (isLoading) {
     return (
       <Card className="w-full max-w-md mx-auto">
         <CardHeader>
-          <CardTitle>Join Meeting</CardTitle>
-          <CardDescription>Loading devices...</CardDescription>
+          <CardTitle>Preparing Your Meeting</CardTitle>
+          <CardDescription>Setting up your camera and microphone...</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="flex flex-col items-center justify-center space-y-4 py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+            <p className="text-sm text-muted-foreground">Please allow access to your devices when prompted</p>
           </div>
         </CardContent>
       </Card>
