@@ -7,15 +7,14 @@ import { Track } from 'livekit-client'
 
 import { ChatSidebar } from "@/components/room/chat-sidebar"
 import { CustomParticipantTile } from "./custom-participant-tile"
-import { LiveKitProvider } from "@/components/providers/livekit-provider"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { cn } from "@/lib/utils"
 import { CustomControlBar } from "./custom-control-bar"
 import { ResetPreferences } from "./reset-preferences"
 
-export function RoomView({ roomName }: { roomName: string }) {
-  const { localUser, connectionDetails } = useRoom()
+export function RoomView() {
+  const { localUser } = useRoom()
   const [isChatOpen, setIsChatOpen] = React.useState(false)
   const [hasUnreadMessages, setHasUnreadMessages] = React.useState(false)
   const chatSidebarRef = React.useRef<{ startPrivateChat: (participantIdentity: string) => void } | null>(null)
@@ -25,8 +24,8 @@ export function RoomView({ roomName }: { roomName: string }) {
     setIsChatOpen(prev => !prev)
   }, [])
 
-  if (!localUser || !connectionDetails) {
-    console.error('Missing required data:', { localUser, connectionDetails });
+  if (!localUser) {
+    console.error('Missing local user data');
     return null;
   }
 
@@ -43,13 +42,6 @@ export function RoomView({ roomName }: { roomName: string }) {
   };
 
   return (
-    <LiveKitProvider
-      serverUrl={connectionDetails.serverUrl}
-      token={connectionDetails.participantToken}
-      connect={true}
-      audio={localUser.audioEnabled}
-      video={localUser.videoEnabled}
-    >
       <div className="h-screen w-screen flex overflow-hidden relative">
         <ResetPreferences />
         {/* For desktop, render chat sidebar inline */}
@@ -97,6 +89,5 @@ export function RoomView({ roomName }: { roomName: string }) {
           </div>
         </div>
       </div>
-    </LiveKitProvider>
   )
 }

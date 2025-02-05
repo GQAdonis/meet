@@ -42,25 +42,7 @@ export function RoomCreator() {
       // 1. Validate room name format
       roomSchema.parse({ roomName })
 
-      // 2. Create room on server
-      const response = await fetch('/api/rooms/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          roomName,
-          e2ee,
-          sharedPassphrase: e2ee ? sharedPassphrase : undefined,
-        }),
-      })
-
-      if (!response.ok) {
-        const error = await response.text()
-        throw new Error(error)
-      }
-
-      // 3. Navigate to room
+      // 2. Navigate to room
       const targetUrl = e2ee ? `/rooms/${roomName}#${encodePassphrase(sharedPassphrase)}` : `/rooms/${roomName}`
       router.push(targetUrl)
     } catch (error) {

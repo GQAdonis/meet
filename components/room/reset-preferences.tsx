@@ -3,12 +3,11 @@ import { useRoom } from "@/hooks/use-room"
 import { Settings } from "lucide-react"
 
 export function ResetPreferences() {
-  const { setSkipPreJoin, setLastUsedDevices, leaveRoom } = useRoom()
+  const { setLastUsedDevices, leaveRoom } = useRoom()
 
   const handleReset = () => {
     // Reset all preferences
-    setSkipPreJoin(false)
-    setLastUsedDevices(null)
+    setLastUsedDevices({})
     leaveRoom()
     // Force reload to ensure clean state
     window.location.reload()

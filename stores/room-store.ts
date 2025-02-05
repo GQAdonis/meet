@@ -3,7 +3,11 @@ import { createJSONStorage, persist } from "zustand/middleware"
 import type { LocalUserChoices } from "@livekit/components-react"
 import type { ConnectionDetails } from "@/lib/types"
 
+
 interface RoomState {
+  isInitializing: boolean
+  error: string | null
+  initializeRoom: (roomName: string, participantName: string, e2ee?: boolean, sharedPassphrase?: string) => Promise<void>
   isInRoom: boolean
   localUser: LocalUserChoices | null
   connectionDetails: ConnectionDetails | null
@@ -11,63 +15,98 @@ interface RoomState {
     audioDeviceId?: string;
     videoDeviceId?: string;
   } | null;
-  skipPreJoin: boolean;
-  room: any | null; // Add room property to the state interface
   setLocalUser: (user: LocalUserChoices) => void
-  setConnectionDetails: (details: ConnectionDetails) => void
   setLastUsedDevices: (devices: { audioDeviceId?: string; videoDeviceId?: string }) => void
-  setSkipPreJoin: (skip: boolean) => void
   joinRoom: () => void
-  leaveRoom: (state: RoomState) => void
+  leaveRoom: () => void
 }
 
-export const useRoomStore = create<RoomState>()(persist((set, get) => ({ // Add get parameter to the store function
-  isInRoom: false,
-  localUser: null,
-  connectionDetails: null,
-  lastUsedDevices: null,
-  skipPreJoin: false,
-  room: null, // Initialize room property
-  setLocalUser: (user) => set({ localUser: user }),
-  setConnectionDetails: (details) => set({ connectionDetails: details }),
-  setLastUsedDevices: (devices) => set({ lastUsedDevices: devices }),
-  setSkipPreJoin: (skip) => set({ skipPreJoin: skip }),
-  joinRoom: async () => {
-    const state = get();
-    if (!state.connectionDetails || !state.localUser) {
-      console.error('Cannot join room: missing connection details or local user settings');
-      return;
-    }
-    try {
-      // Set isInRoom to true only after we have all required data
-      if (state.connectionDetails?.participantToken && state.connectionDetails?.serverUrl) {
-        set({ isInRoom: true });
-      } else {
-        throw new Error('Missing connection token or server URL');
-      }
-    } catch (error) {
-      console.error('Failed to join room:', error);
-      set({ isInRoom: false });
-    }
-  },
-  leaveRoom: (state) => {
-    // Clean up any active tracks
-    const room = state.room;
-    if (room) {
-      room.localParticipant?.unpublishAllTracks();
-      room.disconnect();
-    }
+const handleApiError = async (response: Response, defaultMessage: string) => {
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || defaultMessage);
+  }
+  return response;
+};
 
-    // Reset state
-    set({ 
-      isInRoom: false, 
-      localUser: null, 
+export const useRoomStore = create<RoomState>()(
+  persist(
+    (set, get) => ({
+      isInRoom: false,
+      localUser: null,
       connectionDetails: null,
-      room: null
-    });
-  },
-}), {
-  name: 'room-storage',
-  storage: createJSONStorage(() => sessionStorage),
-  skipHydration: true
-}))
+      lastUsedDevices: null,
+      isInitializing: false,
+      error: null,
+
+      initializeRoom: async (roomName, participantName, e2ee = false, sharedPassphrase) => {
+        const state = get();
+        // If we already have connection details and they match the current room, don't reinitialize
+        if (
+          state.connectionDetails?.roomName === roomName &&
+          state.connectionDetails?.participantName === participantName
+        ) {
+          return;
+        }
+
+        set({ isInitializing: true, error: null, connectionDetails: null });
+
+        try {
+          // Create room
+          await handleApiError(
+            await fetch("/api/rooms/create", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ roomName, e2ee, sharedPassphrase }),
+            }),
+            "Failed to create room"
+          );
+
+          // Get connection details
+          const res = await handleApiError(
+            await fetch(
+              `/api/connection-details?roomName=${roomName}&participantName=${encodeURIComponent(participantName)}`
+            ),
+            "Failed to get connection details"
+          );
+
+          const details = await res.json();
+          if (!details.serverUrl || !details.participantToken) {
+            throw new Error("Invalid connection details received");
+          }
+
+          set({ connectionDetails: details, isInitializing: false, error: null });
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : "Failed to initialize room";
+          console.error("Failed to initialize room:", err);
+          set({ error: errorMessage, isInitializing: false, connectionDetails: null });
+        }
+      },
+
+      setLocalUser: (user) => set({ localUser: user }),
+      setLastUsedDevices: (devices) => set({ lastUsedDevices: devices }),
+
+      joinRoom: () => {
+        const state = get();
+        if (!state.connectionDetails || !state.localUser) {
+          console.error("Cannot join room: missing connection details or local user settings");
+          return;
+        }
+        set({ isInRoom: true });
+      },
+
+      leaveRoom: () => {
+        set({
+          isInRoom: false,
+          localUser: null,
+          connectionDetails: null,
+        });
+      },
+    }),
+    {
+      name: "room-storage",
+      storage: createJSONStorage(() => sessionStorage),
+      skipHydration: true,
+    }
+  )
+);

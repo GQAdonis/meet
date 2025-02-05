@@ -1,17 +1,20 @@
 'use client';
 
 import React from "react"
-import { useRoom } from "@/hooks/use-room"
-import { DataPacket_Kind, type RemoteParticipant } from "livekit-client"
+import { useRoomContext } from "@livekit/components-react"
+import { type RemoteParticipant } from "livekit-client"
 import ReactMarkdown from "react-markdown"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface ChatMessage {
+  id: string
   sender: string
   content: string
   isPrivate: boolean
+  timestamp: number
+  recipientId?: string
 }
 
 interface ChatSidebarProps {
@@ -19,8 +22,9 @@ interface ChatSidebarProps {
   onUnreadMessages?: (hasUnread: boolean) => void;
 }
 
-export const ChatSidebar = React.forwardRef<{ startPrivateChat: (participantIdentity: string) => void }, ChatSidebarProps>(({ onStartPrivateChat, onUnreadMessages }, ref) => {
-  const { room } = useRoom()
+export const ChatSidebar = React.forwardRef<{ startPrivateChat: (participantIdentity: string) => void }, ChatSidebarProps>((props, ref) => {
+  const { onStartPrivateChat, onUnreadMessages } = props;
+  const room = useRoomContext()
   const [messages, setMessages] = React.useState<ChatMessage[]>([])
   const [inputMessage, setInputMessage] = React.useState("")
   const [activeTab, setActiveTab] = React.useState("all")
@@ -31,25 +35,48 @@ export const ChatSidebar = React.forwardRef<{ startPrivateChat: (participantIden
     if (!room) return;
 
     const handleData = (payload: Uint8Array, participant?: RemoteParticipant) => {
-      if (!participant) return; // Guard clause for undefined participant
-      const decodedMessage = new TextDecoder().decode(payload)
-      const { content, isPrivate } = JSON.parse(decodedMessage)
-      setMessages((prev) => [...prev, { sender: participant.identity, content, isPrivate }])
+    if (!participant || !room) return;
+    
+    try {
+      const decodedMessage = new TextDecoder().decode(payload);
+      const parsedMessage = JSON.parse(decodedMessage) as ChatMessage;
       
-      // Update unread counts
-      if (isPrivate) {
-        if (activeTab !== participant.identity) {
+      // Only process messages if they're public or meant for us
+      if (!parsedMessage.isPrivate || parsedMessage.recipientId === room.localParticipant.identity) {
+        const newMessage: ChatMessage = {
+          id: crypto.randomUUID(),
+          sender: participant.identity,
+          content: parsedMessage.content,
+          isPrivate: parsedMessage.isPrivate,
+          timestamp: Date.now(),
+          recipientId: parsedMessage.recipientId
+        };
+        
+        setMessages((prev) => [...prev, newMessage]);
+        
+        // Update unread counts
+        if (parsedMessage.isPrivate) {
+          if (activeTab !== participant.identity) {
+            setUnreadCounts(prev => ({
+              ...prev,
+              [participant.identity]: (prev[participant.identity] || 0) + 1
+            }));
+            
+            // Add private tab if it doesn't exist
+            if (!privateTabs.includes(participant.identity)) {
+              setPrivateTabs(prev => [...prev, participant.identity]);
+            }
+          }
+        } else if (activeTab !== 'all') {
           setUnreadCounts(prev => ({
             ...prev,
-            [participant.identity]: (prev[participant.identity] || 0) + 1
-          }))
+            all: (prev.all || 0) + 1
+          }));
         }
-      } else if (activeTab !== 'all') {
-        setUnreadCounts(prev => ({
-          ...prev,
-          all: (prev.all || 0) + 1
-        }))
       }
+    } catch (error) {
+      console.error('Error processing message:', error);
+    }
     }
 
     room.on("dataReceived", handleData)
@@ -73,27 +100,39 @@ export const ChatSidebar = React.forwardRef<{ startPrivateChat: (participantIden
     }))
   }
 
-  const sendMessage = (to?: RemoteParticipant) => {
-    if (!room) return; // Add guard clause
-    
-    const message = {
-      content: inputMessage,
+  const sendMessage = async (to?: RemoteParticipant) => {
+    if (!inputMessage.trim()) return;
+
+    if (!room) return;
+
+    const message: ChatMessage = {
+      id: crypto.randomUUID(),
+      content: inputMessage.trim(),
+      sender: room.localParticipant.identity,
       isPrivate: !!to,
+      timestamp: Date.now(),
+      recipientId: to?.identity
+    };
+
+    const encodedMessage = new TextEncoder().encode(JSON.stringify(message));
+
+    try {
+      if (to) {
+        room.localParticipant.publishData(encodedMessage, {
+          reliable: true,
+          destinationIdentities: [to.identity],
+        });
+      } else {
+        room.localParticipant.publishData(encodedMessage, {
+          reliable: true,
+        });
+      }
+      setMessages((prev) => [...prev, { ...message, sender: "You" }]);
+      setInputMessage("");
+    } catch (error) {
+      console.error('Failed to send message:', error);
     }
-    const encodedMessage = new TextEncoder().encode(JSON.stringify(message))
-    if (to) {
-      room.localParticipant.publishData(encodedMessage, {
-        destinationIdentities: [to.identity],
-        reliable: true,
-      })
-    } else {
-      room.localParticipant.publishData(encodedMessage, {
-        reliable: true,
-      })
-    }
-    setMessages((prev) => [...prev, { sender: "You", ...message }])
-    setInputMessage("")
-  }
+  };
 
   const startPrivateChat = (participantIdentity: string) => {
     if (!privateTabs.includes(participantIdentity)) {
@@ -112,6 +151,7 @@ export const ChatSidebar = React.forwardRef<{ startPrivateChat: (participantIden
     onStartPrivateChat?.(participantIdentity)
   }
 
+  // Expose startPrivateChat through ref
   React.useImperativeHandle(ref, () => ({
     startPrivateChat
   }));

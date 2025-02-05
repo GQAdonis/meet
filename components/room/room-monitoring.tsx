@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useRoom } from "@/hooks/use-room"
 import { useRoomMonitoring } from "@/hooks/use-room-monitoring"
 import { ConnectionQuality } from "livekit-client"
 import { Wifi, WifiOff, Activity, Cpu } from "lucide-react"
@@ -11,9 +10,10 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card"
+import { useRoomContext } from "@livekit/components-react"
 
 export function RoomMonitoring() {
-  const { room } = useRoom()
+  const room = useRoomContext()
   const stats = useRoomMonitoring(room)
 
   const getConnectionIcon = () => {

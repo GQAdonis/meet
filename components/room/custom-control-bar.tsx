@@ -3,8 +3,8 @@
 import { useLocalParticipant } from "@livekit/components-react"
 import { Button } from "@/components/ui/button"
 import { Mic, MicOff, Video, VideoOff, MessageSquare, PhoneOff } from "lucide-react"
-import { useRoom } from "@/hooks/use-room"
 import { useRouter } from "next/navigation"
+import { useRoomContext } from "@livekit/components-react";
 
 interface CustomControlBarProps {
   onChatToggle: () => void
@@ -12,7 +12,7 @@ interface CustomControlBarProps {
 }
 
 export function CustomControlBar({ onChatToggle, hasUnreadMessages }: CustomControlBarProps) {
-  const { room } = useRoom()
+  const room = useRoomContext()
   const { localParticipant } = useLocalParticipant()
   const router = useRouter()
 

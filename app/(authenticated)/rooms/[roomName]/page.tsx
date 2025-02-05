@@ -4,32 +4,32 @@ import { useRoom } from "@/hooks/use-room"
 import { PreJoinForm } from "@/components/pre-join/pre-join-form"
 import { RoomView } from "@/components/room/room-view"
 import { ProtectedRoute } from "@/components/protected-route"
-import { useEffect, useState } from "react"
+import { LiveKitRoom } from "@livekit/components-react"
 
 export default function Page({ params }: { params: { roomName: string } }) {
-  const { isInRoom } = useRoom()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) {
-    return (
-      <ProtectedRoute>
-        <main className="min-h-screen bg-background">
-          <PreJoinForm roomName={params.roomName} />
-        </main>
-      </ProtectedRoute>
-    )
-  }
+  const { connectionDetails, isInRoom, error } = useRoom()
 
   return (
     <ProtectedRoute>
       <main className="min-h-screen bg-background">
-        {isInRoom ? <RoomView roomName={params.roomName} /> : <PreJoinForm roomName={params.roomName} />}
+        {!connectionDetails ? (
+          <PreJoinForm 
+            roomName={params.roomName}
+            error={error || undefined}
+          />
+        ) : (
+          <LiveKitRoom
+            serverUrl={connectionDetails.serverUrl}
+            token={connectionDetails.participantToken}
+            connect={isInRoom}
+            onDisconnected={() => {
+              // Handle disconnection if needed
+            }}
+          >
+            <RoomView />
+          </LiveKitRoom>
+        )}
       </main>
     </ProtectedRoute>
   )
 }
-

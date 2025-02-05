@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
+import { RoomServiceClient } from 'livekit-server-sdk';
 
 const API_KEY = process.env.LIVEKIT_API_KEY;
 const API_SECRET = process.env.LIVEKIT_API_SECRET;
