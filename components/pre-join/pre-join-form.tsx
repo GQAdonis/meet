@@ -29,13 +29,14 @@ interface PreJoinFormProps {
   roomName: string
 }
 
-export function PreJoinForm({ roomName }: PreJoinFormProps) {
+export function PreJoinForm({ roomName }: PreJoinFormProps): JSX.Element {
   const videoDevicesRef = React.useRef<MediaDeviceInfo[]>([])
   const audioDevicesRef = React.useRef<MediaDeviceInfo[]>([])
   const audioOutputDevicesRef = React.useRef<MediaDeviceInfo[]>([])
   const videoPreviewRef = React.useRef<MediaStream | null>(null)
   const videoRef = React.useRef<HTMLVideoElement>(null)
   const [isLoading, setIsLoading] = React.useState(true)
+  const [connectionDetails, setConnectionDetails] = React.useState<any>(null)
 
   const { session } = useAuth()
   const { setLocalUser, joinRoom, lastUsedDevices, setLastUsedDevices, skipPreJoin, setSkipPreJoin } = useRoom()
@@ -58,8 +59,10 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
     audioOutputDeviceId: "",
   })
 
-  const startVideoPreview = async (deviceId?: string) => {
+  const startVideoPreview = React.useCallback(async (deviceId?: string): Promise<void> => {
+    console.log('Starting video preview with device:', deviceId);
     try {
+      // Stop any existing tracks
       if (videoPreviewRef.current) {
         videoPreviewRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
       }
@@ -68,93 +71,163 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
         ? { video: { deviceId: { exact: deviceId } } }
         : { video: true };
 
+      console.log('Requesting video with constraints:', constraints);
+      
+      // Get new stream
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('Got video stream:', stream.getVideoTracks()[0].label);
+      
       videoPreviewRef.current = stream;
 
+      // Set up video element
       if (videoRef.current) {
+        console.log('Setting up video element');
+        
+        // Reset video element
+        if (videoRef.current.srcObject) {
+          const oldStream = videoRef.current.srcObject as MediaStream;
+          oldStream.getTracks().forEach(track => track.stop());
+        }
+        videoRef.current.srcObject = null;
+        
+        // Configure video element
+        videoRef.current.playsInline = true;
+        videoRef.current.muted = true;
+        videoRef.current.autoplay = true;
+        
+        // Set stream and play
         videoRef.current.srcObject = stream;
-        await videoRef.current.play().catch(error => {
-          console.error('Error playing video:', error);
-          setVideoError('Failed to start video preview. Please check your camera permissions.');
-        });
+        
+        try {
+          console.log('Attempting to play video');
+          await videoRef.current.play();
+          console.log('Video playing successfully');
+          setVideoError(null);
+        } catch (playError: unknown) {
+          console.error('Play failed:', playError);
+          if (playError instanceof Error) {
+            if (playError.name === 'NotAllowedError') {
+              const playOnClick = async () => {
+                if (videoRef.current) {
+                  try {
+                    await videoRef.current.play();
+                    setVideoError(null);
+                  } catch (retryError) {
+                    console.error('Manual play failed:', retryError);
+                    setVideoError('Could not start video. Please check permissions.');
+                  }
+                }
+              };
+              
+              videoRef.current.addEventListener('click', playOnClick, { once: true });
+              setVideoError('Click video area to start camera preview');
+            } else {
+              setVideoError('Could not start video preview. Please try refreshing.');
+            }
+          }
+        }
       }
     } catch (error) {
-      console.error('Error starting video preview:', error);
-      setVideoError('Failed to access camera. Please check your permissions and camera connection.');
+      console.error('Video preview error:', error);
+      setVideoError('Could not access camera. Please check permissions.');
     }
-  };
+  }, [setVideoError]);
 
+  const updateVideoPreview = React.useCallback(async (deviceId: string): Promise<void> => {
+    await startVideoPreview(deviceId);
+  }, [startVideoPreview]);
+
+  const handleDeviceChange = React.useCallback((deviceType: "video" | "audio" | "audioOutput", deviceId: string): void => {
+    form.setValue(
+      deviceType === "video" ? "videoDeviceId" : deviceType === "audio" ? "audioDeviceId" : "audioOutputDeviceId",
+      deviceId
+    );
+
+    if (deviceType === "video") {
+      setVideoError(null); // Reset video error when changing device
+      updateVideoPreview(deviceId);
+    }
+  }, [form, setVideoError, updateVideoPreview]);
+
+  // Initialize room and devices
   React.useEffect(() => {
-    const getDevices = async () => {
+    const initialize = async () => {
+      if (!session?.handle) return;
       if (typeof window === 'undefined') return;
       setIsLoading(true);
       setVideoError(null);
 
-      // If skipPreJoin is true and we have lastUsedDevices, auto-join the room
-      if (skipPreJoin && lastUsedDevices) {
-        const localUserChoices: LocalUserChoices = {
-          username: session?.handle || 'Anonymous',
-          videoEnabled: true,
-          audioEnabled: true,
-          videoDeviceId: lastUsedDevices.videoDeviceId || '',
-          audioDeviceId: lastUsedDevices.audioDeviceId || '',
-        }
-        setLocalUser(localUserChoices)
-        joinRoom()
-        return;
-      }
-      
       try {
-        // Start with video preview first
-        await startVideoPreview();
+        // First create the room
+        console.log('Creating room...');
+        const response = await fetch(`/api/connection-details?roomName=${roomName}&participantName=${encodeURIComponent(session.handle)}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
 
+        if (!response.ok) {
+          throw new Error(`Failed to get connection details: ${await response.text()}`);
+        }
+
+        const details = await response.json();
+        console.log('Room created with details:', details);
+        setConnectionDetails(details);
+
+        // Then initialize devices
+        console.log('Initializing devices...');
         const devices = await navigator.mediaDevices.enumerateDevices();
-        console.log('All detected devices:', devices);
-
+        
         videoDevicesRef.current = devices.filter((device: MediaDeviceInfo) => device.kind === "videoinput");
         audioDevicesRef.current = devices.filter((device: MediaDeviceInfo) => device.kind === "audioinput");
         audioOutputDevicesRef.current = devices.filter((device: MediaDeviceInfo) => device.kind === "audiooutput");
 
-        console.log('Filtered video devices:', videoDevicesRef.current);
-
-        if (videoDevicesRef.current.length === 0) {
-          console.warn('No video devices found');
-          setVideoError('No cameras detected. Please check if your camera is properly connected.');
-        }
-
-        // Set default values for device selections
-        defaultValuesRef.current = {
+        console.log('Setting default values with devices:', {
+          video: videoDevicesRef.current,
+          audio: audioDevicesRef.current,
+          audioOutput: audioOutputDevicesRef.current
+        });
+        const defaultValues = {
           displayName: session?.handle || "",
           videoDeviceId: videoDevicesRef.current[0]?.deviceId ?? "",
           audioDeviceId: audioDevicesRef.current[0]?.deviceId ?? "",
           audioOutputDeviceId: audioOutputDevicesRef.current[0]?.deviceId ?? "",
         };
 
-        // Update form with default values
-        Object.entries(defaultValuesRef.current).forEach(([key, value]) => {
+        console.log('Setting form values:', defaultValues);
+        Object.entries(defaultValues).forEach(([key, value]) => {
           form.setValue(key as keyof PreJoinFormValues, value);
         });
 
-        // Start video preview with the first available camera
-        if (videoDevicesRef.current.length > 0 && defaultValuesRef.current.videoDeviceId) {
-          await updateVideoPreview(defaultValuesRef.current.videoDeviceId);
+        console.log('Starting video preview with device:', defaultValues.videoDeviceId);
+        if (videoDevicesRef.current.length > 0) {
+          await startVideoPreview(defaultValues.videoDeviceId);
+        } else {
+          setVideoError('No cameras detected');
         }
-        
+
+        await new Promise(resolve => setTimeout(resolve, 500)); // Small delay to ensure devices are ready
         setIsLoading(false);
       } catch (error) {
-        console.error("Error accessing media devices:", error);
-        setVideoError(error instanceof Error ? error.message : "Failed to access media devices");
+        console.error('Error initializing:', error);
+        setVideoError('Could not initialize devices and room');
+        setIsLoading(false);
       }
     };
 
-    getDevices();
+    initialize();
 
     return () => {
       videoPreviewRef.current?.getTracks().forEach((track: MediaStreamTrack) => track.stop());
     };
-  }, [form, session]);
+  }, [form, session, startVideoPreview, setVideoError, roomName]);
 
-  const handleSubmit = async (values: PreJoinFormValues) => {
+  const handleSubmit = async (values: PreJoinFormValues): Promise<void> => {
+    if (!connectionDetails) {
+      console.error('No connection details available');
+      return;
+    }
     try {
       // Save the last used devices
       setLastUsedDevices({
@@ -173,29 +246,19 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
         videoDeviceId: values.videoDeviceId ?? '',
         audioDeviceId: values.audioDeviceId ?? '',
       }
-      setLocalUser(localUserChoices)
-
-      // Mark that we're joining the room
-      joinRoom()
+      
+      // Then set local user
+      await new Promise<void>((resolve) => {
+        setLocalUser(localUserChoices);
+        resolve();
+      });
+      
+      console.log('Joining room with:', { connectionDetails, localUserChoices });
+      // Finally mark that we're joining the room
+      await joinRoom();
     } catch (error) {
       console.error('Error preparing media:', error)
     }
-  }
-
-  const handleDeviceChange = (deviceType: "video" | "audio" | "audioOutput", deviceId: string) => {
-    form.setValue(
-      deviceType === "video" ? "videoDeviceId" : deviceType === "audio" ? "audioDeviceId" : "audioOutputDeviceId",
-      deviceId,
-    )
-
-    if (deviceType === "video") {
-      setVideoError(null) // Reset video error when changing device
-      updateVideoPreview(deviceId)
-    }
-  }
-
-  const updateVideoPreview = async (deviceId: string) => {
-    await startVideoPreview(deviceId);
   }
 
   if (isLoading) {
@@ -235,14 +298,8 @@ export function PreJoinForm({ roomName }: PreJoinFormProps) {
                   autoPlay 
                   playsInline 
                   muted 
-                  className="w-full h-full object-cover"
-                  onLoadedMetadata={(e) => {
-                    const video = e.target as HTMLVideoElement
-                    video.play().catch(error => {
-                      console.error('Error playing video after metadata loaded:', error)
-                      setVideoError('Failed to start video preview. Please check your camera permissions.')
-                    })
-                  }}
+                  className="w-full h-full object-cover cursor-pointer"
+                  style={{ transform: 'rotateY(180deg)' }} // Mirror the video
                 />
               )}
             </div>

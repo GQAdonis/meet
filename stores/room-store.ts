@@ -32,7 +32,24 @@ export const useRoomStore = create<RoomState>()(persist((set, get) => ({ // Add 
   setConnectionDetails: (details) => set({ connectionDetails: details }),
   setLastUsedDevices: (devices) => set({ lastUsedDevices: devices }),
   setSkipPreJoin: (skip) => set({ skipPreJoin: skip }),
-  joinRoom: () => set({ isInRoom: true }),
+  joinRoom: async () => {
+    const state = get();
+    if (!state.connectionDetails || !state.localUser) {
+      console.error('Cannot join room: missing connection details or local user settings');
+      return;
+    }
+    try {
+      // Set isInRoom to true only after we have all required data
+      if (state.connectionDetails?.participantToken && state.connectionDetails?.serverUrl) {
+        set({ isInRoom: true });
+      } else {
+        throw new Error('Missing connection token or server URL');
+      }
+    } catch (error) {
+      console.error('Failed to join room:', error);
+      set({ isInRoom: false });
+    }
+  },
   leaveRoom: (state) => {
     // Clean up any active tracks
     const room = state.room;

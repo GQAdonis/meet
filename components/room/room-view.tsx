@@ -25,7 +25,10 @@ export function RoomView({ roomName }: { roomName: string }) {
     setIsChatOpen(prev => !prev)
   }, [])
 
-  if (!localUser || !connectionDetails) return null
+  if (!localUser || !connectionDetails) {
+    console.error('Missing required data:', { localUser, connectionDetails });
+    return null;
+  }
 
   const tracks = useTracks([
     { source: Track.Source.Camera, withPlaceholder: true },
