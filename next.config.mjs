@@ -1,11 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: process.env.NODE_ENV === 'development' ? {
+    NEXT_PUBLIC_TEST_USER_EMAIL: process.env.NEXT_PUBLIC_TEST_USER_EMAIL,
+    NEXT_PUBLIC_TEST_USER_PASSWORD: process.env.NEXT_PUBLIC_TEST_USER_PASSWORD,
+  } : {},
   reactStrictMode: false,
   productionBrowserSourceMaps: true,
   webpack: (config, { dev, isServer }) => {
     // Enable source maps in development
     if (dev) {
       config.devtool = 'eval-source-map';
+      // Ignore source map warnings
+      config.ignoreWarnings = [
+        { module: /node_modules\/.+\?/, message: /Cannot find source map/ },
+        { message: /Could not read source map/ }
+      ];
     }
     return config;
   },

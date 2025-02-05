@@ -2,6 +2,108 @@
 @tailwind components;
 @tailwind utilities;
 
+/* LiveKit video conference adjustments */
+/* Hide all controls except network meter and participant name */
+.lk-control-bar,
+.lk-disconnect-button,
+.lk-media-controls,
+.lk-chat-toggle,
+.lk-settings-toggle,
+.lk-share-button,
+.lk-focus-toggle-button,
+.lk-start-audio-button,
+.lk-device-menu-button {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Keep network meter visible and styled */
+.lk-connection-quality {
+  display: inline-flex !important;
+  position: fixed !important;
+  bottom: 1.5rem !important;
+  left: 9.5rem !important;
+  z-index: 50 !important;
+  color: white !important;
+  font-weight: 500 !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+  border-radius: 9999px !important;
+  overflow: hidden !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+/* Keep participant name visible and styled */
+.lk-participant-metadata {
+  display: inline-flex !important;
+  position: fixed !important;
+  bottom: 1.5rem !important;
+  left: 1.5rem !important;
+  z-index: 50 !important;
+  color: white !important;
+  font-weight: 500 !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Style the participant name elements */
+.lk-participant-metadata > * {
+  border-radius: 9999px !important;
+}
+
+.lk-video-conference {
+  height: 100vh !important;
+}
+
+.lk-video-conference-inner {
+  height: 100% !important;
+  padding-bottom: 0 !important; /* Remove padding that was reserved for control bar */
+}
+
+.lk-grid-layout-wrapper {
+  height: 100% !important;
+}
+
+.lk-participant-tile {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Style placeholder when video is off */
+.lk-participant-placeholder {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  aspect-ratio: 16/9;
+  background-color: rgb(var(--background)) !important;
+}
+
+/* Ensure the track placeholder takes full space */
+.lk-track-placeholder {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Make sure the media element is full size */
+.lk-participant-media-element {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
 @layer base {
   :root {
     --background: 0deg 0% 100%;

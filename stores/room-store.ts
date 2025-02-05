@@ -2,12 +2,13 @@ import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
 import type { LocalUserChoices } from "@livekit/components-react"
 import type { ConnectionDetails } from "@/lib/types"
-
+import { Room } from "livekit-client"
 
 interface RoomState {
   isInitializing: boolean
+  initialized: boolean
   error: string | null
-  initializeRoom: (roomName: string, participantName: string, e2ee?: boolean, sharedPassphrase?: string) => Promise<void>
+  initializeRoom: (roomName: string, participantName: string, room: Room | null, sharedPassphrase?: string) => Promise<Room | Error | null>
   isInRoom: boolean
   localUser: LocalUserChoices | null
   connectionDetails: ConnectionDetails | null
@@ -37,19 +38,24 @@ export const useRoomStore = create<RoomState>()(
       connectionDetails: null,
       lastUsedDevices: null,
       isInitializing: false,
+      initialized: false,
       error: null,
 
-      initializeRoom: async (roomName, participantName, e2ee = false, sharedPassphrase) => {
+      initializeRoom: async (roomName: string, participantName: string, room: Room | null, sharedPassphrase?: string) : Promise<Room | Error | null> => {
         const state = get();
         // If we already have connection details and they match the current room, don't reinitialize
         if (
           state.connectionDetails?.roomName === roomName &&
-          state.connectionDetails?.participantName === participantName
+          state.connectionDetails?.participantName === participantName &&
+          room !== null &&
+          room.name === roomName
         ) {
-          return;
+          return room;
         }
 
-        set({ isInitializing: true, error: null, connectionDetails: null });
+        set({ isInitializing: true, initialized: false, error: null, connectionDetails: null });
+
+        const e2ee = sharedPassphrase !== undefined;
 
         try {
           // Create room
@@ -75,11 +81,14 @@ export const useRoomStore = create<RoomState>()(
             throw new Error("Invalid connection details received");
           }
 
-          set({ connectionDetails: details, isInitializing: false, error: null });
+          set({ connectionDetails: details, isInitializing: false, initialized: true, error: null });
+          return new Room(details.serverUrl);
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : "Failed to initialize room";
           console.error("Failed to initialize room:", err);
-          set({ error: errorMessage, isInitializing: false, connectionDetails: null });
+          set({ error: String(errorMessage), isInitializing: false, initialized: false, connectionDetails: null });
+          const errRet = err instanceof Error ? err : new Error(errorMessage);
+          return errRet;
         }
       },
 
@@ -88,6 +97,12 @@ export const useRoomStore = create<RoomState>()(
 
       joinRoom: () => {
         const state = get();
+
+        if (!state.initialized) {
+          console.error("Cannot join room: room not initialized");
+          return;
+        }
+
         if (!state.connectionDetails || !state.localUser) {
           console.error("Cannot join room: missing connection details or local user settings");
           return;
@@ -105,8 +120,7 @@ export const useRoomStore = create<RoomState>()(
     }),
     {
       name: "room-storage",
-      storage: createJSONStorage(() => sessionStorage),
-      skipHydration: true,
+      storage: createJSONStorage(() => sessionStorage)
     }
   )
 );

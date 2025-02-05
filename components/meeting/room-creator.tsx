@@ -11,13 +11,16 @@ import { Label } from "@/components/ui/label"
 import { z } from "zod"
 import { randomString, encodePassphrase } from "@/lib/client-utils"
 import { cn } from "@/lib/utils"
+import { useRoom } from "@/hooks/use-room"
+import { useAuth } from "@/hooks/use-auth"
+import { AtpSessionData } from "@atproto/api"
 
 const roomSchema = z.object({
   roomName: z
     .string()
     .min(3)
     .max(50)
-    .regex(/^[a-z0-9-]+$/),
+    .regex(/^[a-z0-9-]+$/)
 })
 
 // Function to generate a random room name
@@ -36,21 +39,53 @@ export function RoomCreator() {
   const [e2ee, setE2ee] = React.useState(false)
   const [sharedPassphrase, setSharedPassphrase] = React.useState(randomString(64))
   const [validationError, setValidationError] = React.useState("")
+  const { profile, session } = useAuth()
+  const { initializeRoom } = useRoom()
 
   const startMeeting = async () => {
     try {
+      console.log('Starting meeting initialization...')
+      
       // 1. Validate room name format
       roomSchema.parse({ roomName })
+      console.log('Room name validation passed')
 
-      // 2. Navigate to room
+      const atpSession = session() as AtpSessionData
+      if (!atpSession) {
+        console.error('No ATP session found')
+        throw Error('Authentication session not found')
+      }
+
+      // 2. Initialize room
+      console.log('Initializing room:', roomName)
+      const room = await initializeRoom(
+        roomName, 
+        profile?.displayName || atpSession.handle || 'Anonymous',
+        null,
+        sharedPassphrase
+      )
+      
+      if (room === null || room instanceof Error) {
+        console.error('Error initializing room:', room)
+        throw Error(room instanceof Error ? room.message : 'Failed to initialize room')
+      }
+      
+      console.log('Room initialized successfully')
+
+      // 3. Navigate to room
       const targetUrl = e2ee ? `/rooms/${roomName}#${encodePassphrase(sharedPassphrase)}` : `/rooms/${roomName}`
+      console.log('Redirecting to:', targetUrl)
+      
+      // Use replace instead of push to avoid browser history issues
       router.push(targetUrl)
     } catch (error) {
       console.error('Error starting meeting:', error)
       if (error instanceof z.ZodError) {
-        setValidationError("Room name must contain only lowercase letters, numbers, and hyphens")
+        setValidationError('Room name must contain only lowercase letters, numbers, and hyphens')
       } else {
-        setValidationError(error instanceof Error ? error.message : "Failed to create room")
+        const errorMessage = error instanceof Error ? error.message : 'Failed to create room'
+        console.error('Detailed error:', errorMessage)
+        setValidationError(errorMessage)
       }
     }
   }

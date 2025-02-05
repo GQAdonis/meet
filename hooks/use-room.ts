@@ -16,7 +16,8 @@ export function useRoom() {
     setLastUsedDevices,
     initializeRoom,
     isInitializing,
-    error
+    error,
+    initialized
   } = useRoomStore()
 
   return {
@@ -24,6 +25,7 @@ export function useRoom() {
     isInRoom,
     isInitializing,
     error,
+    initialized,
     connectionDetails,
 
     // User state

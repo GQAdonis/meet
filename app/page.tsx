@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Card } from "@/components/ui/card"
@@ -14,6 +15,15 @@ import '@/styles/home.css'
 
 export default function Home() {
   const { isAuthenticated, logout, profile } = useAuth()
+  const [mounted, setMounted] = React.useState(false)
+
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return null
+  }
 
   return (
     <div className="min-h-screen">

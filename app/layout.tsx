@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
+import "@livekit/components-styles"
 import { ThemeProvider } from "@/components/theme-provider"
 import type React from "react"
 
@@ -26,4 +27,3 @@ export default function RootLayout({
     </html>
   )
 }
-

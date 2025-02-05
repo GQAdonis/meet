@@ -1,20 +1,26 @@
 'use client';
 
-import { ParticipantTile } from "@livekit/components-react"
-import { Participant } from "livekit-client"
+import { ParticipantTile, TrackReference } from "@livekit/components-react"
+import { Participant, Track } from "livekit-client"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 interface CustomParticipantTileProps {
   participant: Participant
   onStartPrivateChat: (participantIdentity: string) => void
+  trackRef?: TrackReference
 }
 
-export function CustomParticipantTile({ participant, onStartPrivateChat }: CustomParticipantTileProps) {
+export function CustomParticipantTile({ participant, onStartPrivateChat, trackRef }: CustomParticipantTileProps) {
+  const isScreenShare = trackRef?.publication.source === Track.Source.ScreenShare;
   return (
     <div className="relative">
       <div className="w-full h-full bg-secondary">
-        <ParticipantTile style={{ width: '100%', height: '100%' }} />
+        <ParticipantTile
+          className="w-full h-full"
+          trackRef={trackRef}
+          disableSpeakingIndicator={isScreenShare}
+        />
       </div>
       <div className="absolute bottom-2 left-2 flex items-center space-x-2">
         <DropdownMenu>

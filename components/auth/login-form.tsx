@@ -9,8 +9,18 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 
 export function LoginForm() {
-  const [identifier, setIdentifier] = useState("")
-  const [password, setPassword] = useState("")
+  const [identifier, setIdentifier] = useState(() => {
+    if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_TEST_USER_EMAIL) {
+      return process.env.NEXT_PUBLIC_TEST_USER_EMAIL;
+    }
+    return "";
+  })
+  const [password, setPassword] = useState(() => {
+    if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_TEST_USER_PASSWORD) {
+      return process.env.NEXT_PUBLIC_TEST_USER_PASSWORD;
+    }
+    return "";
+  })
   const { login } = useAuth()
   const router = useRouter()
   const toast = useToast()
@@ -41,10 +51,15 @@ export function LoginForm() {
       }
     } catch (error) {
       console.error("Login failed:", error)
-      // Handle login error (e.g., show error message to user)
+      const errorMessage = error instanceof Error ? error.message : "Unknown error"
+      console.log("Login error details:", {
+        identifier,
+        error: errorMessage,
+        errorObject: error
+      })
       toast.toast({
         title: "Login failed",
-        description: "Please check your credentials and try again.",
+        description: errorMessage,
         variant: "destructive",
       })
     }
